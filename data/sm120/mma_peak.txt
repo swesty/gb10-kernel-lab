@@ -1,0 +1,9 @@
+BF16 m16n8k16, f32 acc             warps/SM  4 :   514.0 TFLOPS
+BF16 m16n8k16, f32 acc             warps/SM  8 :   550.9 TFLOPS
+BF16 m16n8k16, f32 acc             warps/SM 16 :   554.1 TFLOPS
+FP8 e4m3 m16n8k32, f32 acc         warps/SM  4 :  1029.0 TFLOPS
+FP8 e4m3 m16n8k32, f32 acc         warps/SM  8 :  1101.7 TFLOPS
+FP8 e4m3 m16n8k32, f32 acc         warps/SM 16 :  1107.1 TFLOPS
+NVFP4 m16n8k64 block-scaled, f32   warps/SM  4 :  2068.4 TFLOPS
+NVFP4 m16n8k64 block-scaled, f32   warps/SM  8 :  2210.0 TFLOPS
+NVFP4 m16n8k64 block-scaled, f32   warps/SM 16 :  2217.7 TFLOPS

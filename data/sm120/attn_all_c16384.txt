@@ -1,0 +1,4 @@
+pattern=qsa row_noise=0.3
+rows=4096 context=16384 page=3024 selected/row avg=2050 gathered KV=8.60 GB per call  flops=0.206 TFLOP per call
+kv_warps   us/call gathered GB/s  TFLOP/s  max|err|  max rel  lse err
+       2    1614.6        5324.2   127.78    0.0001    0.008   0.0000

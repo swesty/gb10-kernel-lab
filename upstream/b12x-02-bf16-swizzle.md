@@ -20,8 +20,11 @@ The TMA-fed kernels use `get_tensor(layout.outer, swizzle=layout.inner)`, which 
 - Every 128-bit store into the K/V tiles and every `ldmatrix` showed about 2× the ideal wavefronts (43% excess on
   stores, 54% on `ldmatrix`, 47% on the P stores), independent of the thread→data mapping. That points at the
   layout, not the access pattern.
-- Using `S<3,3,3>` for Q/K/V (16-byte units), the matching atom for P, and storing the odd 8-column chunk first in odd
-  64-column blocks gives **0% excess wavefronts on every shared-memory operation**.
+- `S<3,3,3>` for Q/K/V (16-byte units) and the matching atom for P removes the load (`ldmatrix`) conflicts: 46.8% → 0.0% of
+  load wavefronts. On its own it leaves the K/V gather stores at 51% conflicts, because of the order the gather writes 16-byte
+  chunks in.
+- Storing the odd 8-column chunk first in odd 64-column blocks (done in our pipelined gather path) brings the stores to
+  4.6–5.0%.
 - Together with two other changes (software-pipelined loads; QK and online softmax split across all four warps), the
   kernel went from 14.04 ms to 7.31 ms at 16K context (1.92×) with the same error against FP32 (1e-4, LSE exact).
   The swizzle alone was 8.68 → 7.77 ms on top of pipelining.
@@ -29,9 +32,22 @@ The TMA-fed kernels use `get_tensor(layout.outer, swizzle=layout.inner)`, which 
 `bf16_gemv` has the same construction; its conflicts are expected but **not measured**. That kernel is not on the
 Flash Next path.
 
-Measured on sm_121 (GB10). This is not a tuning choice: bank conflicts depend only on the SM's shared-memory banks, which
-are the same on sm_120 and sm_121. So the fix should remove the same conflicts on an RTX PRO 6000. We have not measured it
-there.
+## Same on sm_120 (RTX PRO 6000)
+
+Bank conflicts depend only on the SM's shared-memory banks, which are the same on sm_120 and sm_121. We checked: same harness,
+same b12x 1.5.0 source, Nsight Compute bank-conflict counters, kv_warps = 2, 16K context:
+
+| Variant | GB10 loads | GB10 stores | RTX PRO 6000 loads | RTX PRO 6000 stores |
+|---|---|---|---|---|
+| stock | 46.8% | 51.6% | 46.8% | 51.7% |
+| `S<3,3,3>` only | 0.0% | 51.1% | 0.0% | 51.2% |
+| pipelined gather | 46.8% | 51.6% | 46.8% | 51.5% |
+| pipelined gather + `S<3,3,3>` + store order | 0.0% | 5.0% | 0.0% | 4.7% |
+
+(Conflicts as a share of shared-memory wavefronts.) Time on the RTX PRO 6000, 4,096 rows, µs, 16K / 32K context: stock
+2,958 / 2,957; `S<3,3,3>` only 2,882 / 2,795 (−2.6% / −5.5%); pipelined 2,026 / 1,922; pipelined + swizzle 1,750 / 1,749
+(−13.6% / −9.0%); all three changes 1,615 / 1,772 (1.83× / 1.67×). Error against FP32 is unchanged in every variant
+(1e-4, LSE exact).
 
 ## Patch / references
 

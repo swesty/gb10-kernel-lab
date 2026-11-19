@@ -14,33 +14,37 @@ Nothing below has been filed; drafts are in this folder.
 | [vllm-project/vllm](https://github.com/vllm-project/vllm) `main` | Mainline vLLM. Has its **own** Qwen4-Exp implementation (`vllm/models/qwen4_exp/`), consuming b12x through FlashInfer | `4ae5147` (2026-11-19) | PLE disk offload only (see below) |
 | [eugr/spark-vllm-docker](https://github.com/eugr/spark-vllm-docker) | Recipes | — | nothing to file |
 
-## Will the fixes regress SM120? (GB10 = sm_121 vs RTX PRO 6000 = sm_120)
+## Will the fixes regress SM120? (GB10 = sm_121 vs RTX PRO 6000 = sm_120) — measured 2026-11-19
 
 Same SM architecture (same ISA, `mma.sync` only, 100 KB shared memory per SM, same bank layout), very different memory
 system: GB10 has **48 SMs, 24 MB L2, ~273 GB/s** (238 GB/s achievable); the RTX PRO 6000 has **188 SMs, 128 MB L2,
-~1.8 TB/s**. Some findings are pure bugs that behave the same on both; others are tuning choices whose best value depends on
-SM count and L2 size, and those must not be "fixed" with GB10 constants.
+~1.8 TB/s**. Measured `mma.sync` peaks on the RTX PRO 6000: BF16 554, FP8 1,107, NVFP4 2,218 TFLOPS (4.45× GB10).
 
 **How b12x picks configurations today.** b12x autotunes at preparation time (`b12x.preparation`: `Knob`, `TuningContract`):
 it measures candidate configs on the actual GPU and caches the winners per `DeviceIdentity` (vendor, compute capability,
 SM count, product name — so it already distinguishes GB10 from an RTX PRO 6000; L2 size is not part of the identity). The dense
 GEMM also has an explicit Spark policy, `_use_low_sm_dense_tactics(sm_count)` (≤ 64 SMs). **The problem is not hardware
-detection: the settings we changed are hard-coded constants the tuner never explores.** So the right upstream fix for the
-hardware-dependent items is to make them tunable (or gate them on the existing low-SM policy), letting each GPU measure its own
-best choice.
+detection: the settings we changed are hard-coded constants the tuner never explores.**
 
-| # | Finding | Depends on GPU memory system? | SM120 risk of our fix as-is | Upstream form that cannot regress SM120 | Validated on |
-|---|---|---|---|---|---|
-| B1 | MTP prefill tile 16 + M-major | **Yes.** The 84 MB A operand streams from DRAM on GB10 (24 MB L2) but fits in the RTX PRO 6000's 128 MB L2, so the penalty there is mostly L2 traffic and low arithmetic intensity, not DRAM | Low (all variants bit-identical; a 128-wide tile is the normal GEMM choice), but unmeasured | Add `tile_n` ∈ {16, 64, 128} and `raster` ∈ {M, N} as knobs in `MtpFeedbackConfig` (the contract already tunes the norm params); the tuner picks per device | sm_121 only |
-| B2 | BF16 swizzle on element offsets | **No.** Bank conflicts depend on the SM's shared-memory banks, identical on sm_120 and sm_121 | Very low: the fix only removes conflicts (wavefront counts are architecture-independent within SM12x) | Plain bug fix | sm_121 only |
-| B3 | Dense GEMM M-major walk; no tile knob in quantized mode | **Yes.** Whether A re-streams from DRAM depends on L2 size; best tile depends on SM count | **Real if hard-coded**: on 128 MB L2, out_proj's 25 MB A already fits, so forcing N-major could be neutral or slower | Add `raster_along_m` and the tile options to the tuner's candidate set for quantized-mode plans, or apply them only under the existing low-SM (Spark) policy | sm_121 only |
-| B4 | PLE disk reads synchronous; queue depth 64 | **No** (host/NVMe-bound; GPU-agnostic) | None: prefetched rows are used only on an exact ID match; queue depth affects only disk I/O | Prefetch API + configurable queue depth (best value is NVMe-dependent) | sm_121 only |
-| B5–B8 | GID −1, ready_queue, deterministic, cache identity | No | None | Plain fixes | — |
-| V1–V5 | vLLM fork: PLE queue depth/prefetch, fused q/k norm, GDN identity path, HC fusions, quantisation fusion | No: they remove copies and passes, not retune kernels | Very low (logprob-equivalent on sm_121; expected to help sm_120 too) | As drafted | sm_121 only |
-| M1 | mainline vLLM PLE disk reads | No | None | As drafted | — |
+**What we ran.** Every b12x finding was re-measured on an RTX PRO 6000 (jarvis, sm_120, driver 580.173.02) with the same
+b12x 1.5.0 source and the same harnesses, in `vllm-openai:v0.30.0` + cutlass-dsl 4.7.1 / torch 2.13 cu130 (spark-5 has
+cutlass-dsl 4.7.0). The production model was stopped for the timed runs (17:36–17:44 UTC). L2 flushes were enlarged to
+512 MB for the 128 MB L2. Raw data: [`data/sm120/`](../data/sm120/); scripts: [`scripts/sm120/`](../scripts/sm120/).
+One run per configuration; placement-to-placement spread on sm_120 was ≤ 1%, so treat differences under ~1.5% as noise.
 
-**Before filing**, either validate the SM120 side (B1 and B3 above all, plus a quick B2 check) on an RTX PRO 6000, or file
-B1/B3 as "tunable choice; here is GB10 data" rather than "change the default", and state plainly that only sm_121 was measured.
+| # | Finding | sm_120 result | Verdict | Upstream form |
+|---|---|---|---|---|
+| B1 | MTP prefill tile 16 + M-major | Stock 1,764 µs (1,919 after an L2 flush) → our GB10 setting (tile 128, 2 stages, N-major) **684 µs (688)**, 2.6–2.8× faster, bit-identical; within 1.2% of the best sm_120 variant (128/2/M-major, 676). cuBLAS: 526 µs. But N-major **alone** at tile 16 is +12% slower back-to-back (1,971 µs) | **Helps sm_120 too.** The tile is what matters; the grid order is hardware- and cache-state-dependent | Change the default tile to 128 × 2 stages (wins on both GPUs), and expose `tile_n` / `raster` to `MtpFeedbackConfig` rather than hard-coding the order |
+| B2 | BF16 swizzle on element offsets | Bank-conflict counts **identical to GB10 to three significant figures**. Stock: loads 46.8%, stores 51.7% of wavefronts are conflicts. `S<3,3,3>` alone: loads 0.0%, stores unchanged (51%) and 2.6–5.5% faster. With the pipelined gather's store order: stores 4.7%. Full patch: 1.83× at 16K | **GPU-agnostic, as predicted** | Plain bug fix (atom) + the store-order change; see the corrected draft |
+| B3 | Dense GEMM M-major walk; no tile knob in quantized mode | sm_120 picks different tiles (128×128×64 for the big projections, 128×64 / 64×128 elsewhere; GB10's low-SM lowering picks 64×128×128 for all). Our exact recipe on sm_120: attn qkv −5.2%, gate/up −3.2%, down −5.7%, out unchanged (the 20-N-tile rule does not fire on its tile), **in_proj_qkvz +2.7% slower** (large-M unroll). N-major on sm_120's own tiles: −6.5% to +1.1%. Placement spread 1.25–2.05 ms on GB10, ≤ 1% on sm_120 | **Mixed: hard-coding would regress one shape on sm_120** | Tuner knobs (raster and tile for quantized-mode plans), or confine to the low-SM policy. Not a new default |
+| B4 | PLE disk reads synchronous; queue depth 64 | not GPU-dependent (host/NVMe); not re-run | — | as drafted |
+| B5–B8 | GID −1, ready_queue, deterministic, cache identity | not GPU-dependent; not re-run | — | as drafted |
+| V1–V5, M1 | vLLM-side | not GPU-dependent kernels; not re-run | — | as drafted |
+
+**Bottom line.** The swizzle fix (B2) and the MTP tile (B1) improve sm_120 as much as or more than GB10 and are safe to
+file as bugs. The dense GEMM changes (B3) are genuinely hardware-dependent: file them as "let the tuner choose; here are GB10
+and sm_120 numbers", not as a default change. Only one sm_120 part (RTX PRO 6000) was measured; a 5090-class part (170 SMs,
+96 MB L2) was not.
 
 ## b12x kernel findings → file at **FlashInfer** and at **local-inference-lab/b12x**
 

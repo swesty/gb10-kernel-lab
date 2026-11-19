@@ -32,17 +32,29 @@ real-text 14.5K prefill 5.47 → 5.27 s (−3.7%), 16K TTFT 5,842 → 5,639 ms (
 
 ## Hardware dependence
 
-Measured on sm_121 only. How much this costs depends on L2 size: on GB10 (24 MB L2) the 84 MB A operand streams from DRAM
-once per N tile. On an RTX PRO 6000 (128 MB L2) it would mostly hit L2, so the penalty there is the 13 GB of L2→SM traffic
-and the low arithmetic intensity of a 128×16 tile, which is smaller but probably not zero. Every variant gives bit-identical
-output.
+How much the 16-wide tile costs depends on L2 size: on GB10 (24 MB L2) the 84 MB A operand streams from DRAM once per N
+tile. On an RTX PRO 6000 (sm_120, 188 SMs, 128 MB L2) it mostly hits L2, but the narrow tile still costs a lot. Same
+harness, same b12x 1.5.0 source, 4,096 tokens (16,384 × 2,560 × 2,560), µs:
+
+| Tile N / stages / grid order | RTX PRO 6000, back-to-back | RTX PRO 6000, after 512 MB L2 flush |
+|---|---|---|
+| 16 / 3 / M-fastest (stock) | 1,764 | 1,919 |
+| 16 / 3 / N-fastest | 1,971 | 1,834 |
+| 64 / 3 / M-fastest | 770 | 856 |
+| 128 / 2 / M-fastest | **676** | 719 |
+| 128 / 2 / N-fastest (our GB10 setting) | 684 | **688** |
+| cuBLAS BF16 matmul, no epilogue | 526 | 543 |
+
+So the 128-wide tile is a 2.6–2.8× win on sm_120 as well (vs 22× on GB10), with bit-identical output. The grid order matters
+little once the tile is 128, and on its own (tile 16) N-fastest is 12% slower back-to-back on sm_120. The order is a
+hardware- and cache-state-dependent choice; the tile is not.
 
 ## Suggested fix
 
-Rather than changing the constants for everyone, expose the tile and grid order to the existing tuner: add `tile_n` ∈ {16, 64,
-128}, `stages` and `raster` ∈ {M-fastest, N-fastest} to `MtpFeedbackConfig`, which today tunes only the norm parameters.
-Each GPU then measures its own best choice. On GB10 that is 128 / 2 / N-fastest; a 128-wide tile with 2 stages fits
-comfortably in 99 KB on any SM12x. Our patch makes all three configurable via env and adds them to the compile-cache key:
+Change the default tile to 128 wide with 2 stages (fits comfortably in 99 KB on any SM12x; faster on both GPUs we measured).
+Ideally also expose the tile and grid order to the existing tuner (`tile_n` ∈ {16, 64, 128}, `stages`, `raster` ∈
+{M-fastest, N-fastest} in `MtpFeedbackConfig`, which today tunes only the norm parameters), since the best order differs
+between GPUs. Our patch makes all three configurable via env and adds them to the compile-cache key:
 <https://github.com/swesty/gb10-kernel-lab/blob/main/patches/b12x/mtp_feedback.tile-raster.diff>; harness:
 <https://github.com/swesty/gb10-kernel-lab/blob/main/scripts/mtp_gemm_harness.py>. Happy to open a PR with fixed defaults
 instead of env switches if preferred.

@@ -106,6 +106,7 @@ def main():
     ap.add_argument("--descale", type=float, default=0.75)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--profile-one", type=int, default=0, help="kv_warps to run once inside cudaProfilerStart/Stop")
+    ap.add_argument("--split", action="store_true", help="test the decode split path (rows <= 64) + merge")
     ap.add_argument("--pattern", choices=("qsa", "random"), default="qsa")
     ap.add_argument("--row-noise", type=float, default=0.3, help="qsa pattern: per-row score noise vs shared base")
     a = ap.parse_args()
@@ -121,11 +122,24 @@ def main():
     print(f"rows={a.rows} context={a.context} page={a.page} selected/row avg={n_sel / a.rows:.0f} "
           f"gathered KV={gathered / 1e9:.2f} GB per call  flops={flops / 1e12:.3f} TFLOP per call")
     print(f"{'kv_warps':>8s} {'us/call':>9s} {'gathered GB/s':>13s} {'TFLOP/s':>8s} {'max|err|':>9s} {'max rel':>8s} {'lse err':>8s}")
-    for kw in [int(x) for x in a.kv_warps.split(",")]:
+    kw_list = [int(x) for x in a.kv_warps.split(",")]
+    if a.split:
+        kw_list = [2]  # the split path always compiles kv_warps=2
+    for kw in kw_list:
         out = torch.empty(a.rows, QH, D, dtype=torch.bfloat16, device=dev)
         lse = torch.empty(a.rows, QH, dtype=torch.float32, device=dev)
-        def run():
-            launch_selected_paged_gqa_direct(**inp, output=out, output_lse=lse, softmax_scale=scale, kv_warps=kw)
+        if a.split:
+            from b12x.attention.paged._selected_forward import launch_sparse_gqa_split, launch_sparse_gqa_merge
+            splits = 64 if a.rows == 1 else 32 if a.rows <= 4 else 16  # b12x QSA contract for rows <= 64
+            p_out = torch.empty(a.rows, splits, QH, D, dtype=torch.float32, device=dev)
+            p_lse = torch.empty(a.rows, splits, QH, dtype=torch.float32, device=dev)
+            def run():
+                launch_sparse_gqa_split(**inp, partial_output=p_out, partial_lse=p_lse, softmax_scale=scale, splits=splits)
+                launch_sparse_gqa_merge(partial_output=p_out, partial_lse=p_lse, output=out, output_lse=lse,
+                                        rows=a.rows, splits=splits)
+        else:
+            def run():
+                launch_selected_paged_gqa_direct(**inp, output=out, output_lse=lse, softmax_scale=scale, kv_warps=kw)
         run(); torch.cuda.synchronize()  # compile + warm
         err = rel = lerr = 0.0
         for r in rows_to_check:

@@ -20,7 +20,7 @@ Paths timed per shape (M = 4096 rows unless --m):
 Weights are random legal values with random block scales. Correctness: outputs are compared to an FP32
 reference built from the dequantized quantized activations and dequantized weights.
 
-Timing: kernel durations from torch.profiler (CUPTI). "cold" = a 96 MB buffer is rewritten before each
+Timing: kernel durations from torch.profiler (CUPTI). "cold" = a 96 MB buffer (HARNESS_FLUSH_MB) is rewritten before each
 launch so operands come from DRAM; "hot" = back-to-back launches. CUDA-event times are also recorded.
 
 Usage (in the container):
@@ -154,7 +154,9 @@ _FLUSH = None
 def flush_l2():
     global _FLUSH
     if _FLUSH is None:
-        _FLUSH = torch.empty(96 * 1024 * 1024 // 4, device=DEV, dtype=torch.float32)
+        # Must exceed L2: 96 MB was sized for GB10 (24 MB L2); use HARNESS_FLUSH_MB=512 on a 128 MB-L2 part.
+        _FLUSH = torch.empty(int(os.environ.get("HARNESS_FLUSH_MB", "96")) * 1024 * 1024 // 4, device=DEV,
+                             dtype=torch.float32)
     _FLUSH.fill_(1.0)
 
 

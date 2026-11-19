@@ -1,0 +1,2 @@
+{'B12X_MTP_TILE_N': '128', 'B12X_MTP_STAGES': '2', 'B12X_MTP_RASTER_N': '1'}:       688 us   312.1 TFLOPS  rel err 1.80e-03  bit-equal to BF16 ref 100.00%
+cuBLAS BF16 matmul (no epilogue):       544 us   394.9 TFLOPS

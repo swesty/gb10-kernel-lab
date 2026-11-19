@@ -7,7 +7,7 @@ whose tile N, stage count and rasterisation are read from B12X_MTP_TILE_N / B12X
 B12X_MTP_RASTER_N. Output is checked against a PyTorch reference; cuBLAS BF16 matmul is timed as a
 reference for what this GPU reaches on the same GEMM.
 
-Usage: B12X_COMPILE_DISK_CACHE=0 python3 mtp_gemm_harness.py [--exp] [--tokens 4096]
+Usage: B12X_COMPILE_DISK_CACHE=0 python3 mtp_gemm_harness.py [--exp] [--tokens 4096] [--flush-mb 512]
 """
 import argparse
 import importlib
@@ -18,6 +18,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--exp", action="store_true", help="use the experimental module copy")
 ap.add_argument("--tokens", type=int, default=4096)
 ap.add_argument("--iters", type=int, default=5)
+ap.add_argument("--flush-mb", type=int, default=0,
+                help="rewrite a buffer this size before each timed launch so A/W start outside L2 (0 = back-to-back)")
 args = ap.parse_args()
 
 mod = importlib.import_module("b12x.sequence.mtp_feedback." + ("_cute_prefill_exp" if args.exp else "_cute_prefill"))
@@ -33,14 +35,24 @@ out = torch.empty(rows * H, device=dev, dtype=torch.bfloat16)
 launch = mod.compile_mtp_prefill_bf16_gemm(rows, H, H, device=dev, streams=S, add_token_path=True)
 
 
+flush = torch.empty(args.flush_mb * 1024 * 1024 // 4, device=dev, dtype=torch.float32) if args.flush_mb else None
+
+
 def timed(fn, iters):
     fn(); torch.cuda.synchronize()
     s, e = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
-    s.record()
-    for _ in range(iters):
-        fn()
-    e.record(); torch.cuda.synchronize()
-    return s.elapsed_time(e) / iters
+    if flush is None:
+        s.record()
+        for _ in range(iters):
+            fn()
+        e.record(); torch.cuda.synchronize()
+        return s.elapsed_time(e) / iters
+    ts = []
+    for _ in range(iters):  # median of individually timed launches, each after an L2 flush
+        flush.fill_(1.0)
+        s.record(); fn(); e.record(); torch.cuda.synchronize()
+        ts.append(s.elapsed_time(e))
+    return sorted(ts)[len(ts) // 2]
 
 
 ms = timed(lambda: launch(x, w, out, token_path=tok.view(-1), live_rows=rows), args.iters)

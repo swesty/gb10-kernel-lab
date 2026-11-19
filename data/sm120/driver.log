@@ -1,0 +1,10 @@
+[17:36:29] stopping prod | gpu_mem=63326MiB prod_ctr=1
+[17:36:30] prod stopped | gpu_mem=858MiB prod_ctr=0
+[17:36:30] A mma_peak | gpu_mem=858MiB prod_ctr=0
+[17:36:31] B mtp | gpu_mem=858MiB prod_ctr=0
+[17:38:19] C dense | gpu_mem=858MiB prod_ctr=0
+[17:39:05] D attention | gpu_mem=858MiB prod_ctr=0
+[17:40:12] E ncu | gpu_mem=858MiB prod_ctr=0
+[17:40:37] all steps finished | gpu_mem=858MiB prod_ctr=0
+[17:40:37] restoring prod | gpu_mem=858MiB prod_ctr=0
+[17:44:08] prod status 200 DONE | gpu_mem=63784MiB prod_ctr=1

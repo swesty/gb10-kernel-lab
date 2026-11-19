@@ -1,0 +1,9 @@
+==WARNING== Note: Running with unmodified GPU clocks. If not controlled otherwise, profiling results may be inconsistent.
+==PROF== Connected to process 67 (/usr/bin/python3.12)
+==PROF== Profiling "kernel_cutlass_kernel_b12xattentionpaged_selected_forward_SelectedPositionPagedForwardKernel_object_at__ptrbf16gmem_ptrf8E4M3FNgmem_ptrf8E4M3FNgmem_ptrf32gmem_ptrf32gmem_ptri32gmem_ptri32_0": 0%....50%....100% - 37 passes
+pattern=qsa row_noise=0.3
+rows=4096 context=16384 page=3024 selected/row avg=2050 gathered KV=8.60 GB per call  flops=0.206 TFLOP per call
+kv_warps   us/call gathered GB/s  TFLOP/s  max|err|  max rel  lse err
+       2    2926.9        2936.9    70.49    0.0001    0.007   0.0000
+==PROF== Disconnected from process 67
+==PROF== Report: /out/attn-stock-sm120.ncu-rep

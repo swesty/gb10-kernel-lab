@@ -1,0 +1,2 @@
+stock:      1764 us   121.7 TFLOPS  rel err 1.80e-03  bit-equal to BF16 ref 100.00%
+cuBLAS BF16 matmul (no epilogue):       526 us   408.0 TFLOPS

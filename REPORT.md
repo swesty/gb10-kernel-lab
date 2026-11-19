@@ -423,7 +423,11 @@ a layout problem, not a mapping problem. b12x builds its BF16 tiles from CUTLASS
 `S<3,4,3> ∘ (8,64):(64,1)`. CuTe applies that swizzle to **element** offsets; for 2-byte BF16 it XORs
 32-byte units instead of 16-byte units, so pairs of rows collide. Fix: `S<3,3,3>` for Q/K/V (16-byte units),
 the matching atom for P, and storing the odd 8-column chunk first in odd 64-column blocks.
-Result: **0% excess wavefronts on every shared-memory operation**. A mapping that varies rows fastest also
+Result: loads (`ldmatrix`) go from 46.8% bank conflicts to **0.0%**. The atom change alone leaves the K/V gather stores
+at 51%; with the odd-chunk-first store order (pipelined gather path) they drop to **4.6–5.0%**. *(Corrected 2026-11-19:
+this read "0% excess wavefronts on every shared-memory operation". That was Nsight's source-level warning disappearing; the
+raw bank-conflict counters of the same final kernel, `attn-split-swz2`, show 0.04% on loads and 4.6% on stores. Re-measured
+on GB10 and on an RTX PRO 6000 in §13.21.)* A mapping that varies rows fastest also
 removed conflicts but cost 28% via worse global-load coalescing, so it was not kept.
 The same construction (`allocate_tensor(BFloat16, composed_layout)` on the 128-byte atom) also appears in
 `b12x/gemm/bf16_gemv/_kernel.py:389–390`, which Flash Next does not use; its conflicts are expected but were not
@@ -1434,6 +1438,74 @@ No other category in the current trace is far from its hardware limit: the HC co
 bandwidth (§13.4), the attention kernel was reworked (§9), the largest dense GEMMs are now at 58–69% of the FP8 peak
 (§13.16), and launch gaps total under 40 ms.
 
+### 13.21 Do the b12x fixes hold on SM120? (RTX PRO 6000 cross-check)
+
+**Why.** The b12x kernels were written mostly against SM120 cards. GB10 has the same SM (same ISA, `mma.sync` only, same
+100 KB shared memory and bank layout) but a very different memory system: 48 SMs and 24 MB L2 against the RTX PRO 6000's
+188 SMs and 128 MB L2. Before filing upstream we had to know which of our fixes are plain bugs and which are tuning
+choices that a GB10 constant could make worse on SM120.
+
+**Setup.** jarvis (RTX PRO 6000 Blackwell Workstation, sm_120, 96 GB, driver 580.173.02). Its production model was stopped
+through llamactl for the timed runs, 17:36:30–17:44:08 UTC, and came back with HTTP 200. Same b12x 1.5.0 source as spark-5,
+mounted into `vllm-openai:v0.30.0-pr55601-b12x130` (torch 2.13 cu130, cutlass-dsl 4.7.1; spark-5 has 4.7.0),
+`CUTE_DSL_ARCH=sm_120a`, same harnesses. The dense harness's "cold" L2 flush was 96 MB, which is smaller than a 128 MB L2,
+so it is now `HARNESS_FLUSH_MB` (512 here). The MTP harness gained `--flush-mb`. Everything is in `data/sm120/`; the
+driver is `scripts/sm120/all.sh` (stops prod, always restores it). One run per configuration. Placement-to-placement
+spread on sm_120 was ≤ 1%, so differences under ~1.5% are noise.
+
+**Tensor-core peaks** (`mma.sync`, `scripts/mma_peak.cu`, 16 warps/SM): BF16 554, FP8 1,107, NVFP4 2,218 TFLOPS,
+4.45× GB10's 124.5 / 249 / 498.
+
+**MTP feedback prefill GEMM (§13.15)**, 16,384 × 2,560 × 2,560, µs, back-to-back / after a 512 MB flush:
+
+| Tile N / stages / order | sm_120 |
+|---|---|
+| 16 / 3 / M (stock) | 1,764 / 1,919 |
+| 16 / 3 / N | 1,971 / 1,834 |
+| 64 / 3 / M | 770 / 856 |
+| 128 / 2 / M | **676** / 719 |
+| 128 / 2 / N (our GB10 setting) | 684 / **688** |
+| cuBLAS BF16 | 526 / 543 |
+
+The 128-wide tile is a 2.6–2.8× win on sm_120 too (22× on GB10), bit-identical in every variant. The grid order is not
+universal: on its own, at tile 16, N-fastest is 12% slower back-to-back on sm_120.
+
+**Dense MXFP8 GEMMs (§13.16)**, M = 4,096, median of 6 placements after a 512 MB flush, µs. sm_120's lowering already
+picks different tiles from GB10's low-SM lowering (which uses 64×128×128 for every shape):
+
+| GEMM | sm_120 default tile | Stock | N-major (`rm=0`) | Our exact recipe (20-N-tile rule + qkvz/attn tile override) |
+|---|---|---|---|---|
+| in_proj_qkvz 16384 × 2560 | 128×128×64 | 528.4 | 534.5 | 542.8 (**+2.7%**: large-M unroll) |
+| attn qkv 13312 × 2560 | 128×128×64 | 469.0 | 438.3 | 444.4 (−5.2%) |
+| out_proj 2560 × 6144 | 128×64 | 235.6 | 237.6 | 235.6 (rule does not fire: 40 N tiles) |
+| gate+up 1280 × 2560 | 128×64 | 65.6 | 63.5 | 63.5 (−3.2%) |
+| down 2560 × 640 | 64×128 | 34.8 | 32.8 | 32.8 (−5.7%) |
+| in_proj_ba 96 × 2560 | 128×64 | 20.4 | 20.4 | 20.4 |
+
+The best of the configurations tried for out_proj on sm_120 is 128×128×64 with unroll and N-major, 221 µs (−6.1%).
+The placement sensitivity behind §13.16's 1.25–2.05 ms spread does not exist on sm_120 (≤ 1%). Conclusion: the dense
+changes are tuning choices. Mostly positive on sm_120, but one shape is 2.7% slower, so upstream they belong in the
+tuner or the low-SM policy, not in the defaults.
+
+**Attention swizzle (§9.7)**, bank conflicts as a share of shared-memory wavefronts (Nsight Compute counters, kv_warps = 2,
+16K context, same harness on both GPUs):
+
+| Variant | GB10 loads / stores | sm_120 loads / stores | sm_120 time, 16K / 32K (µs) |
+|---|---|---|---|
+| stock | 46.8% / 51.6% | 46.8% / 51.7% | 2,958 / 2,957 |
+| `S<3,3,3>` only | 0.0% / 51.1% | 0.0% / 51.2% | 2,882 / 2,795 |
+| pipelined | 46.8% / 51.6% | 46.8% / 51.5% | 2,026 / 1,922 |
+| pipelined + `S<3,3,3>` (+ store order) | 0.0% / 5.0% | 0.0% / 4.7% | 1,750 / 1,749 |
+| + split QK (full patch) | — | 0.1% / 4.4% | 1,615 / 1,772 |
+
+The conflicts are identical to three significant figures on both GPUs, as expected from identical banks. So the swizzle is
+a plain bug, and the fix helps sm_120 (−9 to −14% on top of pipelining). The patched file with every switch off runs at
+stock speed (2,945 µs). Error against FP32 is unchanged everywhere. One difference: split QK is 1.3% slower than
+pipelined + swizzle at 32K on sm_120, whereas on GB10 it helped at both lengths.
+
+**Not re-run:** the PLE disk items (host/NVMe-bound), the small b12x bugs and the vLLM-side changes. None of them is a GPU
+tuning choice. Only one SM120 part was measured; a 5090-class part (170 SMs, 96 MB L2) was not.
+
 ## 14. Tooling lessons and incidents
 
 - **`vllm bench serve` inside the container without `HF_HUB_OFFLINE=1` moved the Hugging Face ref** to a
@@ -1509,6 +1581,7 @@ working copies the scripts expect.
 | **Shareable recipe** (spark-vllm-docker recipe + mod with checksum-gated file installs, README, bench script); validated on the tested image and refused on a newer one | `recipe/`; tarball on release `v2026.11.19` |
 | **Upstream triage and issue drafts** (b12x, vLLM fork), checked against current upstream branches; JSON-schema/tool-call smoke script | `upstream/`; `scripts/smoke.py` |
 | Soak test and guarded start (§13.20) | `scripts/soak.sh`, `scripts/guarded_start.sh`, `scripts/recipe_e2e.sh`; `data/soak-20261119.txt` |
+| SM120 cross-check (§13.21): RTX PRO 6000 results, GB10 counters from the same runs, driver scripts | `data/sm120/` (+ `gb10-same-counters/`); `scripts/sm120/` |
 | Same-session A/B (§13.14) | `scripts/final_ab.sh`; `data/exp-final-session-*.txt`, `data/final_ab.log` |
 | Current-build capture and idle-gap analysis; PLE queue-depth patch and sweep (§13.17) | `data/nsys/E-prefill-16k-current.nsys-rep`; `scripts/capture_current.sh`, `scripts/gaps.py`, `scripts/layer_seq.py`, `scripts/ple_qd_patch.py`, `scripts/ple_disk_sweep.sh`, `scripts/ple_prefetch_patch.py`, `scripts/ple_prefetch_live.sh`; `patches/vllm/b12x_ple.*.diff`, `patches/b12x/ple_prefetch.b12x-and-vllm.diff`; `data/exp-ple-*.txt` |
 
