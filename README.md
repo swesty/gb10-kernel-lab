@@ -24,6 +24,7 @@ with teacher-forced log-probabilities, and the full set passed a mixed-load soak
 | [`harness/attention/`](harness/attention/) | The selected-position attention harness and the patched kernel |
 | [`data/`](data/) | Nsight Systems and Nsight Compute reports, A/B outputs, logprob captures, live MoE routes, GEMM sweeps |
 | [`reference/b12x-1.5.0/`](reference/b12x-1.5.0/) | Unmodified b12x source as deployed, for reading alongside the report |
+| [`upstream/`](upstream/) | Triage of the bugs and improvements for b12x and the vLLM fork, with issue drafts (checked against current upstream) |
 | `work/` | Raw working files from the investigation |
 
 Two large files are attached to the GitHub release instead of the tree: the 4-layer side-engine Nsight

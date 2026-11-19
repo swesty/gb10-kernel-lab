@@ -425,6 +425,10 @@ a layout problem, not a mapping problem. b12x builds its BF16 tiles from CUTLASS
 the matching atom for P, and storing the odd 8-column chunk first in odd 64-column blocks.
 Result: **0% excess wavefronts on every shared-memory operation**. A mapping that varies rows fastest also
 removed conflicts but cost 28% via worse global-load coalescing, so it was not kept.
+The same construction (`allocate_tensor(BFloat16, composed_layout)` on the 128-byte atom) also appears in
+`b12x/gemm/bf16_gemv/_kernel.py:389–390`, which Flash Next does not use; its conflicts are expected but were not
+measured. TMA-fed kernels use `get_tensor(layout.outer, swizzle=layout.inner)`, which swizzles byte addresses, and
+are not affected (see `upstream/b12x-02-bf16-swizzle.md`).
 
 ### 9.8 Final numbers
 
@@ -1503,6 +1507,7 @@ working copies the scripts expect.
 | Dense GEMM harness, sweeps, vendor comparison, placement test, tile-order patch (§13.16) | `scripts/dense_gemm_*`, `scripts/dense_raster_*`; `data/gemm/`; `data/exp-dense-raster.txt` |
 | Fused activation quantisation (§13.19) | `scripts/gdn_norm_mxfp8.py` (+ `_check`, `_diff`), `scripts/norm_quant_fusion_patch.py`, `scripts/qsa_gate_quant_patch.py`, `scripts/qsa_gate_quant_check.py`, `scripts/arm_live.sh`; `patches/vllm/*.cumulative.diff`; `data/exp-nq-ab-*.txt`, `data/exp-qg-ab-*.txt` |
 | **Shareable recipe** (spark-vllm-docker recipe + mod with checksum-gated file installs, README, bench script); validated on the tested image and refused on a newer one | `recipe/`; tarball on release `v2026.11.19` |
+| **Upstream triage and issue drafts** (b12x, vLLM fork), checked against current upstream branches; JSON-schema/tool-call smoke script | `upstream/`; `scripts/smoke.py` |
 | Soak test and guarded start (§13.20) | `scripts/soak.sh`, `scripts/guarded_start.sh`, `scripts/recipe_e2e.sh`; `data/soak-20261119.txt` |
 | Same-session A/B (§13.14) | `scripts/final_ab.sh`; `data/exp-final-session-*.txt`, `data/final_ab.log` |
 | Current-build capture and idle-gap analysis; PLE queue-depth patch and sweep (§13.17) | `data/nsys/E-prefill-16k-current.nsys-rep`; `scripts/capture_current.sh`, `scripts/gaps.py`, `scripts/layer_seq.py`, `scripts/ple_qd_patch.py`, `scripts/ple_disk_sweep.sh`, `scripts/ple_prefetch_patch.py`, `scripts/ple_prefetch_live.sh`; `patches/vllm/b12x_ple.*.diff`, `patches/b12x/ple_prefetch.b12x-and-vllm.diff`; `data/exp-ple-*.txt` |
