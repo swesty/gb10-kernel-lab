@@ -1,0 +1,10 @@
+T=16 patched stock:        39 us    21.6 TFLOPS  rel err 2.58e-03  bit-equal to BF16 ref 74.96%
+T=16 patched cuBLAS BF16 matmul (no epilogue):        18 us    45.6 TFLOPS
+T=64 patched stock:        49 us    68.3 TFLOPS  rel err 2.65e-03  bit-equal to BF16 ref 76.43%
+T=64 patched cuBLAS BF16 matmul (no epilogue):        25 us   136.5 TFLOPS
+T=256 patched stock:        59 us   226.0 TFLOPS  rel err 1.80e-03  bit-equal to BF16 ref 100.00%
+T=256 patched cuBLAS BF16 matmul (no epilogue):        49 us   273.1 TFLOPS
+T=1024 patched stock:       207 us   259.6 TFLOPS  rel err 1.80e-03  bit-equal to BF16 ref 100.00%
+T=1024 patched cuBLAS BF16 matmul (no epilogue):       154 us   349.5 TFLOPS
+T=4096 patched stock:       696 us   308.4 TFLOPS  rel err 1.80e-03  bit-equal to BF16 ref 100.00%
+T=4096 patched cuBLAS BF16 matmul (no epilogue):       549 us   391.3 TFLOPS

@@ -1,0 +1,227 @@
+diff --git a/flashinfer/experimental/b12x/sequence/mtp_feedback/_cute_prefill.py b/flashinfer/experimental/b12x/sequence/mtp_feedback/_cute_prefill.py
+index e7b09be..06d0060 100644
+--- a/flashinfer/experimental/b12x/sequence/mtp_feedback/_cute_prefill.py
++++ b/flashinfer/experimental/b12x/sequence/mtp_feedback/_cute_prefill.py
+@@ -26,9 +26,12 @@ from ._cute_prefill_config import supports_prefill, tensors_support_prefill
+ from b12x._lib.program_cache import register_program_cache
+ 
+ 
+-_TILE_N = 16
++# Output-column tile, widest first. A 16-wide tile makes every block re-read its
++# 128-row A panel once per N tile; at the Qwen3.8 shape (16,384 x 2,560 x 2,560)
++# that streams the 84 MB A operand from DRAM 160 times on a 24 MB-L2 part.
++_TILE_N_CANDIDATES = (128, 64, 16)
++_STAGES_BY_TILE_N = {128: 2, 64: 3, 16: 3}
+ _TILE_K = 64
+-_STAGES = 3
+ _BUFFER_ALIGN_BYTES = 1_024
+ _CACHE_LOCK = RLock()
+ _KERNEL_CACHE: Dict[Tuple[int, int, int, int, int, bool], object] = {}
+@@ -134,10 +137,15 @@ class MTPPrefillBf16GemmKernel:
+             raise ValueError(f"tile_m must be 16, 32, 64, or 128, got {self.tile_m}")
+         if self.rows % self.tile_m:
+             raise ValueError(f"rows={self.rows} must be divisible by {self.tile_m}")
+-        if self.output_columns % _TILE_N:
++        self.tile_n = next(
++            (n for n in _TILE_N_CANDIDATES if self.output_columns % n == 0), None
++        )
++        if self.tile_n is None:
+             raise ValueError(
+-                f"output_columns={self.output_columns} must be divisible by {_TILE_N}"
++                f"output_columns={self.output_columns} must be divisible by "
++                f"{_TILE_N_CANDIDATES[-1]}"
+             )
++        self.stages = _STAGES_BY_TILE_N[self.tile_n]
+         if self.reduction_width % _TILE_K:
+             raise ValueError(
+                 f"reduction_width={self.reduction_width} must be divisible by {_TILE_K}"
+@@ -155,7 +163,7 @@ class MTPPrefillBf16GemmKernel:
+         return cute.make_tiled_mma(
+             warp.MmaF16BF16Op(cutlass.BFloat16, Float32, (16, 8, 16)),
+             (self.compute_warps, 1, 1),
+-            permutation_mnk=(self.compute_warps * 16, _TILE_N, 16),
++            permutation_mnk=(self.compute_warps * 16, self.tile_n, 16),
+         )
+ 
+     def _shared_layouts(self) -> tuple[cute.ComposedLayout, cute.ComposedLayout]:
+@@ -169,12 +177,12 @@ class MTPPrefillBf16GemmKernel:
+         )
+         layout_a = cute.tile_to_shape(
+             layout_atom,
+-            (self.tile_m, _TILE_K, _STAGES),
++            (self.tile_m, _TILE_K, self.stages),
+             order=(0, 1, 2),
+         )
+         layout_b = cute.tile_to_shape(
+             layout_atom,
+-            (_TILE_N, _TILE_K, _STAGES),
++            (self.tile_n, _TILE_K, self.stages),
+             order=(0, 1, 2),
+         )
+         return layout_a, layout_b
+@@ -188,7 +196,7 @@ class MTPPrefillBf16GemmKernel:
+             pass
+ 
+         SharedStorage.__annotations__ = {
+-            "barriers": cute.struct.MemRange[cutlass.Int64, _STAGES * 2],
++            "barriers": cute.struct.MemRange[cutlass.Int64, self.stages * 2],
+             "a": cute.struct.Align[
+                 cute.struct.MemRange[cutlass.BFloat16, cute.cosize(layout_a)],
+                 _BUFFER_ALIGN_BYTES,
+@@ -235,7 +243,7 @@ class MTPPrefillBf16GemmKernel:
+             cpasync.CopyBulkTensorTileG2SOp(),
+             weight,
+             tma_layout_b,
+-            (_TILE_N, _TILE_K),
++            (self.tile_n, _TILE_K),
+             num_multicast=1,
+         )
+         self.kernel(
+@@ -251,9 +259,11 @@ class MTPPrefillBf16GemmKernel:
+             tiled_mma,
+             SharedStorage,
+         ).launch(
++            # N tiles on grid x: blocks that share an A panel run back to back, so
++            # the panel is reused from L2 instead of being re-read per N tile.
+             grid=(
++                self.output_columns // self.tile_n,
+                 (live_rows + Int32(self.tile_m - 1)) // Int32(self.tile_m),
+-                self.output_columns // _TILE_N,
+                 1,
+             ),
+             block=[self.threads, 1, 1],
+@@ -277,7 +287,7 @@ class MTPPrefillBf16GemmKernel:
+         SharedStorage: cutlass.Constexpr,
+     ):
+         tidx, _, _ = cute.arch.thread_idx()
+-        m_tile, n_tile, _ = cute.arch.block_idx()
++        n_tile, m_tile, _ = cute.arch.block_idx()
+         warp_index = cute.arch.make_warp_uniform(cute.arch.warp_idx())
+ 
+         if warp_index == 0:
+@@ -288,9 +298,9 @@ class MTPPrefillBf16GemmKernel:
+         storage = allocator.allocate(SharedStorage)
+         shared_a = storage.a.get_tensor(layout_a.outer, swizzle=layout_a.inner)
+         shared_b = storage.b.get_tensor(layout_b.outer, swizzle=layout_b.inner)
+-        copy_bytes = (self.tile_m + _TILE_N) * _TILE_K * cutlass.BFloat16.width // 8
++        copy_bytes = (self.tile_m + self.tile_n) * _TILE_K * cutlass.BFloat16.width // 8
+         load_pipeline = pipeline.PipelineTmaAsync.create(
+-            num_stages=_STAGES,
++            num_stages=self.stages,
+             producer_group=pipeline.CooperativeGroup(pipeline.Agent.Thread),
+             consumer_group=pipeline.CooperativeGroup(
+                 pipeline.Agent.Thread,
+@@ -309,7 +319,7 @@ class MTPPrefillBf16GemmKernel:
+         )
+         global_b = cute.local_tile(
+             weight,
+-            (_TILE_N, _TILE_K),
++            (self.tile_n, _TILE_K),
+             (None, None),
+         )
+         cta_layout = cute.make_layout(1)
+@@ -331,7 +341,7 @@ class MTPPrefillBf16GemmKernel:
+         if warp_index < Int32(self.compute_warps):
+             consumer_state = pipeline.make_pipeline_state(
+                 pipeline.PipelineUserType.Consumer,
+-                _STAGES,
++                self.stages,
+             )
+             thread_mma = tiled_mma.get_slice(tidx)
+             thread_shared_a = thread_mma.partition_A(shared_a)
+@@ -342,7 +352,7 @@ class MTPPrefillBf16GemmKernel:
+             register_b = thread_mma.make_fragment_B(
+                 thread_shared_b[None, None, None, 0]
+             )
+-            accumulator_shape = thread_mma.partition_shape_C((self.tile_m, _TILE_N))
++            accumulator_shape = thread_mma.partition_shape_C((self.tile_m, self.tile_n))
+             accumulator = cute.make_rmem_tensor(accumulator_shape, Float32)
+             accumulator.fill(0.0)
+             copy_atom_a = cute.make_copy_atom(
+@@ -376,7 +386,7 @@ class MTPPrefillBf16GemmKernel:
+             accumulator_mn = _reshape_acc_to_mn(accumulator)
+             coordinate_mn = _reshape_acc_to_mn(
+                 thread_mma.partition_C(
+-                    cute.make_identity_tensor((self.tile_m, _TILE_N))
++                    cute.make_identity_tensor((self.tile_m, self.tile_n))
+                 )
+             )
+             for accumulator_m in cutlass.range_constexpr(
+@@ -387,7 +397,7 @@ class MTPPrefillBf16GemmKernel:
+                 ):
+                     coordinate = coordinate_mn[accumulator_m, accumulator_n]
+                     row = m_tile * Int32(self.tile_m) + coordinate[0]
+-                    column = n_tile * Int32(_TILE_N) + coordinate[1]
++                    column = n_tile * Int32(self.tile_n) + coordinate[1]
+                     value = accumulator_mn[accumulator_m, accumulator_n]
+                     if cutlass.const_expr(self.add_token_path):
+                         token = row // Int32(self.streams)
+@@ -405,7 +415,7 @@ class MTPPrefillBf16GemmKernel:
+         elif warp_index == Int32(self.producer_warp):
+             producer_state = pipeline.make_pipeline_state(
+                 pipeline.PipelineUserType.Producer,
+-                _STAGES,
++                self.stages,
+             )
+             for reduction_tile in cutlass.range_constexpr(self.reduction_tiles):
+                 load_pipeline.producer_acquire(producer_state)
+@@ -525,7 +535,7 @@ def compile_mtp_prefill_bf16_gemm(
+                 current_cuda_stream(),
+                 compile_spec=KernelCompileSpec.from_key(
+                     "sequence.mtp_feedback.prefill_bf16_gemm",
+-                    3,
++                    4,
+                     cache_key[1:],
+                 ),
+             )
+diff --git a/tests/experimental/b12x/sequence/test_mtp_feedback.py b/tests/experimental/b12x/sequence/test_mtp_feedback.py
+index d93f4a3..36066d1 100644
+--- a/tests/experimental/b12x/sequence/test_mtp_feedback.py
++++ b/tests/experimental/b12x/sequence/test_mtp_feedback.py
+@@ -620,3 +620,46 @@ def test_caps_and_run_validate_contract() -> None:
+     for eps in (0.0, -1.0, math.inf, math.nan):
+         with pytest.raises(ValueError, match="eps must be finite and positive"):
+             mtp.run(binding, eps=eps)
++
++
++@pytest.mark.parametrize(
++    ("output_columns", "tile_n"),
++    [(2560, 128), (2496, 64), (2512, 16)],
++)
++def test_prefill_gemm_tile_n_choice_matches_reference(
++    output_columns: int, tile_n: int
++) -> None:
++    """Each output-column tile width (128, then 64, then 16) computes the same GEMM."""
++    from b12x.sequence.mtp_feedback import _cute_prefill
++
++    device = require_sm120()
++    rows, width, streams = 512, 2560, 4
++    kernel = _cute_prefill.MTPPrefillBf16GemmKernel(
++        rows=rows,
++        output_columns=output_columns,
++        reduction_width=width,
++        streams=streams,
++        add_token_path=True,
++    )
++    assert kernel.tile_n == tile_n
++    inputs = _randn((rows, width), device=device, scale=0.5)
++    weight = _randn((output_columns, width), device=device, scale=width**-0.5)
++    token_path = _randn((rows // streams, output_columns), device=device, scale=0.5)
++    output = torch.empty(rows * output_columns, device=device, dtype=torch.bfloat16)
++    launch = _cute_prefill.compile_mtp_prefill_bf16_gemm(
++        rows,
++        output_columns,
++        width,
++        device=device,
++        streams=streams,
++        add_token_path=True,
++    )
++    live_rows = rows - 64
++    launch(inputs, weight, output, token_path=token_path.view(-1), live_rows=live_rows)
++    torch.cuda.synchronize(device)
++
++    expected = (inputs[:live_rows].float() @ weight.float().t()) + token_path.float()[
++        torch.arange(live_rows, device=device) // streams
++    ]
++    actual = output.view(rows, output_columns)[:live_rows].float()
++    torch.testing.assert_close(actual, expected, rtol=2e-2, atol=4e-2)

@@ -1,0 +1,10 @@
+T=16 stock stock:        31 us    27.3 TFLOPS  rel err 2.58e-03  bit-equal to BF16 ref 74.96%
+T=16 stock cuBLAS BF16 matmul (no epilogue):        18 us    45.6 TFLOPS
+T=64 stock stock:        47 us    71.2 TFLOPS  rel err 2.65e-03  bit-equal to BF16 ref 76.43%
+T=64 stock cuBLAS BF16 matmul (no epilogue):        25 us   136.5 TFLOPS
+T=256 stock stock:       133 us   100.8 TFLOPS  rel err 1.80e-03  bit-equal to BF16 ref 100.00%
+T=256 stock cuBLAS BF16 matmul (no epilogue):        49 us   273.1 TFLOPS
+T=1024 stock stock:       473 us   113.5 TFLOPS  rel err 1.80e-03  bit-equal to BF16 ref 100.00%
+T=1024 stock cuBLAS BF16 matmul (no epilogue):       154 us   349.5 TFLOPS
+T=4096 stock stock:      1917 us   112.0 TFLOPS  rel err 1.80e-03  bit-equal to BF16 ref 100.00%
+T=4096 stock cuBLAS BF16 matmul (no epilogue):       549 us   391.3 TFLOPS

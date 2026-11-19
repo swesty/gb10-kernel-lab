@@ -1,0 +1,64 @@
+diff --git a/flashinfer/experimental/b12x/attention/paged/_selected_forward.py b/flashinfer/experimental/b12x/attention/paged/_selected_forward.py
+index cc717e2..072c549 100644
+--- a/flashinfer/experimental/b12x/attention/paged/_selected_forward.py
++++ b/flashinfer/experimental/b12x/attention/paged/_selected_forward.py
+@@ -15,7 +15,6 @@ from threading import RLock
+ import cuda.bindings.driver as cuda
+ import cutlass
+ import cutlass.cute as cute
+-import cutlass.utils.hopper_helpers as sm90_utils_basic
+ import torch
+ from cutlass import (
+     BFloat16,
+@@ -27,9 +26,8 @@ from cutlass import (
+     const_expr,
+ )
+ from cutlass._mlir.dialects import llvm
+-from cutlass.cute.nvgpu import warp, warpgroup
++from cutlass.cute.nvgpu import warp
+ from cutlass.cutlass_dsl import T, dsl_user_op
+-from cutlass.utils import LayoutEnum
+ 
+ from b12x.attention._shared.contiguous import layout_utils
+ from b12x.attention._shared.contiguous.forward import (
+@@ -233,21 +231,17 @@ class _SelectedPositionPagedForwardKernel:
+         cute.ComposedLayout,
+         cute.ComposedLayout,
+     ]:
+-        head_layout_atom = warpgroup.make_smem_layout_atom(
+-            sm90_utils_basic.get_smem_layout_atom(
+-                LayoutEnum.ROW_MAJOR,
+-                BFloat16,
+-                _HEAD_DIM,
+-            ),
+-            BFloat16,
++        # These tiles are allocated with allocate_tensor(BFloat16, layout), which
++        # applies the swizzle to element offsets. The stock 128-byte atom
++        # (S<3,4,3>) then XORs 32-byte units for 2-byte elements and pairs of rows
++        # share banks. S<b,3,3> XORs 16-byte units, matching the 128-bit accesses.
++        head_layout_atom = cute.make_composed_layout(
++            cute.make_swizzle(3, 3, 3), 0, cute.make_layout((8, 64), stride=(64, 1))
+         )
+-        probability_layout_atom = warpgroup.make_smem_layout_atom(
+-            sm90_utils_basic.get_smem_layout_atom(
+-                LayoutEnum.ROW_MAJOR,
+-                BFloat16,
+-                self.tile_n,
+-            ),
+-            BFloat16,
++        probability_layout_atom = cute.make_composed_layout(
++            cute.make_swizzle({16: 1, 32: 2, 64: 3}[self.tile_n], 3, 3),
++            0,
++            cute.make_layout((8, self.tile_n), stride=(self.tile_n, 1)),
+         )
+         query_layout = cute.tile_to_shape(
+             head_layout_atom,
+@@ -1280,7 +1274,7 @@ def _compile(
+                 current_cuda_stream(),
+                 compile_spec=KernelCompileSpec.from_key(
+                     "attention.paged.selected_forward",
+-                    4,
++                    5,
+                     (
+                         q_heads,
+                         kv_heads,
