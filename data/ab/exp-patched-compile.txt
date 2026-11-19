@@ -1,0 +1,9 @@
+=== patched-compile 23:05:26
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          6798.62   
+Median TTFT (ms):                        6835.60   
+real-text prefill 14569 tokens: 6.29 s
+real-text prefill 14570 tokens: 6.30 s
+real-text prefill 14569 tokens: 6.31 s
+decode c=4 real text: per-request [8.3, 8.8, 8.4, 8.5] chunks/s, mean TTFT 2.75 s, MTP acceptance 52.5% (2.10 accepted per step)

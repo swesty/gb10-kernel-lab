@@ -1,0 +1,64 @@
+--- b12x/gemm/blockscaled/_preparation.py.orig	2026-11-19 08:31:18
++++ b12x/gemm/blockscaled/_preparation.py	2026-11-19 08:50:35
+@@ -40,10 +40,30 @@
+         output_mode="functional" if functional else "provided",
+         alpha_mode="unit" if functional else "tensor",
+         expected_m=expected_m,
++        **_dense_tile_override(query.out_features, query.padded_in_features, expected_m),
+     )
+     return _default_lowering(inner, device.identity)
+ 
+ 
++def _dense_tile_override(n, k, expected_m):
++    import os as _os_to
++    spec = _os_to.environ.get("B12X_DENSE_TILE_OVERRIDE", "")
++    if not spec or expected_m is None or expected_m < 2048:
++        return {}
++    for item in spec.split(","):
++        shape, _, tile = item.partition("=")
++        sn, sk = (int(v) for v in shape.split("x"))
++        if (sn, sk) != (int(n), int(k)):
++            continue
++        dims, _, flag = tile.partition(":")
++        tm, tn, tk = (int(v) for v in dims.split("x"))
++        overrides = {"mma_tiler_mn": (tm, tn), "_tile_k_override": tk}
++        if flag == "lmu":
++            overrides["_large_m_unroll_override"] = True
++        return {"overrides": overrides}
++    return {}
++
++
+ def _has_mxfp8_prefill_regime(query):
+     return (
+         query.recipe == "mxfp8" and query.expected_m is None
+@@ -153,6 +173,11 @@
+                    query.recipe == "nvfp4", (64, 64, 1))[-1]
+ 
+ 
++import contextvars as _cv_pq
++# NORM_QUANT_FUSION_PATCH: a caller may produce the MXFP8 activations itself (see run()).
++B12X_MXFP8_PREQUANT = _cv_pq.ContextVar("b12x_mxfp8_prequant", default=None)
++
++
+ @dataclass(frozen=True)
+ class _PackedExecutionState:
+     query: BlockscaledQuery
+@@ -298,10 +323,14 @@
+             partials = workspace[partial_start:needed].view(torch.float32)
+             constants = (q.in_features, q.padded_in_features, fp4, q.global_scale_kind == "reciprocal", 16 if fp4 else 32, 16)
+             grid = (m, triton.cdiv(q.padded_in_features // (16 if fp4 else 32), 16), 1)
+-            self.programs["quantize"][grid](
+-                source, packed_values, packed_scales, activation_scale if fp4 else alpha,
+-                global_scale if fp4 else alpha, alpha, m, *constants,
+-            )
++            _pq = None if fp4 else B12X_MXFP8_PREQUANT.get()
++            if _pq is not None and _pq.m == m and _pq.k == q.padded_in_features == q.in_features:
++                _pq(packed_values, packed_scales, alpha, m)
++            else:
++                self.programs["quantize"][grid](
++                    source, packed_values, packed_scales, activation_scale if fp4 else alpha,
++                    global_scale if fp4 else alpha, alpha, m, *constants,
++                )
+             from b12x._lib.intrinsics import as_grouped_scale_view, as_grouped_scale_view_mx
+             scale_view = (as_grouped_scale_view if fp4 else as_grouped_scale_view_mx)(packed_scales.view(1, -1), m, q.padded_in_features)
+             core.run(

@@ -1,0 +1,15 @@
+--- b12x_ple.py.orig	2026-11-19 12:57:59.259602163 +0000
++++ b12x_ple.py	2026-11-19 12:57:59.259736387 +0000
+@@ -134,7 +134,11 @@
+         self._table_storage = None
+         if layout.caps.table_memory == "io_uring":
+             api = _b12x_module("ple_embedding")
+-            self.disk_table = api.DiskTable(layout, shard_rows)
++            import os as _os_qd
++            self.disk_table = api.DiskTable(
++                layout, shard_rows,
++                queue_depth=int(_os_qd.environ.get("VLLM_PLE_DISK_QUEUE_DEPTH", "64")),
++            )
+             tensors: dict[str, torch.Tensor | None] = {"weight": None}
+             for name in ("weight_scale", "weight_scale_2"):
+                 shape = getattr(layout, f"{name}_shape")

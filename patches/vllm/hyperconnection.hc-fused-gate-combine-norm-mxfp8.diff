@@ -1,0 +1,209 @@
+--- hyperconnection.orig.py	2026-11-18 18:49:37
++++ hyperconnection.hcx2.py	2026-11-18 19:06:03
+@@ -154,6 +154,133 @@
+             yield name
+ 
+ 
++
++def _hc_quant_config():
++    """EXPERIMENT (2026-11-18): VLLM_HC_MXFP8=1 quantises the HC low-rank projections online to MXFP8
++    (block-32 scales, weight-only, BF16 activations via b12x's MXFP8 linear kernel - the same path the
++    engine already uses for the LM head). Default: BF16 via cuBLAS, unchanged."""
++    import os
++
++    if os.environ.get("VLLM_HC_MXFP8", "0") != "1":
++        return None
++    from vllm.model_executor.layers.quantization.base_config import QuantizationConfig
++    from vllm.model_executor.layers.quantization.online.mxfp8 import Mxfp8OnlineLinearMethod
++
++    class _HcMxfp8A16Config(QuantizationConfig):
++        def get_name(self):
++            return "hc_mxfp8_a16"
++
++        def get_supported_act_dtypes(self):
++            return [torch.bfloat16]
++
++        @classmethod
++        def get_min_capability(cls):
++            return 120
++
++        @staticmethod
++        def get_config_filenames():
++            return []
++
++        @classmethod
++        def from_config(cls, config):
++            return cls()
++
++        def get_quant_method(self, layer, prefix):
++            return Mxfp8OnlineLinearMethod(use_a16=True)
++
++    return _HcMxfp8A16Config()
++
++
++
++# ---- EXPERIMENT (2026-11-18): fused HC up projection + gated mean ---------------------------------
++# VLLM_HC_FUSED_GATE=1 replaces  gate_logits = up(bottleneck); block_input = gate_mean(normalized, gate_logits)
++# with one Triton kernel that keeps gate_logits in registers. Rounding mirrors the live path (logits rounded to
++# BF16, gate and product rounded to BF16, FP32 accumulation, mean over streams); bit-identical in testing.
++_HC_FUSED_GATE = __import__("os").environ.get("VLLM_HC_FUSED_GATE", "0") == "1"
++
++import triton  # noqa: E402
++import triton.language as tl  # noqa: E402
++
++
++@triton.jit
++def _hc_fused_up_gated_mean_kernel(x_ptr, w_ptr, norm_ptr, out_ptr, T, H: tl.constexpr, K: tl.constexpr,
++                                   STREAMS: tl.constexpr, BLOCK_T: tl.constexpr, BLOCK_H: tl.constexpr,
++                                   BLOCK_K: tl.constexpr):
++    pid_t = tl.program_id(0)
++    pid_h = tl.program_id(1)
++    t = pid_t * BLOCK_T + tl.arange(0, BLOCK_T)
++    h = pid_h * BLOCK_H + tl.arange(0, BLOCK_H)
++    tmask = t < T
++    hmask = h < H
++    t64 = t.to(tl.int64)
++    total = tl.zeros((BLOCK_T, BLOCK_H), tl.float32)
++    for s in tl.static_range(STREAMS):
++        acc = tl.zeros((BLOCK_T, BLOCK_H), tl.float32)
++        for k0 in tl.static_range(0, K, BLOCK_K):
++            k = k0 + tl.arange(0, BLOCK_K)
++            a = tl.load(x_ptr + t64[:, None] * K + k[None, :], mask=tmask[:, None], other=0.0)
++            w = tl.load(w_ptr + (s * H + h)[:, None].to(tl.int64) * K + k[None, :], mask=hmask[:, None], other=0.0)
++            acc += tl.dot(a, tl.trans(w))
++        logits = acc.to(tl.bfloat16).to(tl.float32)
++        gate = tl.sigmoid(logits).to(tl.bfloat16)
++        vals = tl.load(norm_ptr + t64[:, None] * (STREAMS * H) + s * H + h[None, :],
++                       mask=tmask[:, None] & hmask[None, :], other=0.0)
++        product = (gate * vals).to(tl.bfloat16)
++        total += product.to(tl.float32)
++    tl.store(out_ptr + t64[:, None] * H + h[None, :], (total / STREAMS).to(tl.bfloat16),
++             mask=tmask[:, None] & hmask[None, :])
++
++
++def _hc_fused_up_gated_mean(bottleneck, weight, normalized, out, streams, hidden):
++    tokens, lowrank = bottleneck.shape
++    if tokens <= 64:
++        bt, warps, stages = 16, 4, 3
++    else:
++        bt, warps, stages = 64, 4, 2
++    _hc_fused_up_gated_mean_kernel[(triton.cdiv(tokens, bt), triton.cdiv(hidden, 64))](
++        bottleneck, weight, normalized, out, tokens, H=hidden, K=lowrank, STREAMS=streams,
++        BLOCK_T=bt, BLOCK_H=64, BLOCK_K=64, num_warps=warps, num_stages=stages)
++    return out
++
++
++
++# ---- EXPERIMENT (2026-11-18): Triton combine-norm for prefill-sized batches ------------------------
++# VLLM_HC_TRITON_COMBINE_NORM=1: for tokens > 64, one program per token handles all streams, loading the
++# shared block-output row once and issuing every row load up front (~81% of GB10 bandwidth vs ~62%).
++_HC_TRITON_COMBINE_NORM = __import__("os").environ.get("VLLM_HC_TRITON_COMBINE_NORM", "0") == "1"
++
++
++@triton.jit
++def _hc_combine_norm_kernel(state_ptr, out_ptr, logit_ptr, logit_stride, w_ptr, comb_ptr, norm_ptr, eps,
++                            H: tl.constexpr, S: tl.constexpr, BLOCK: tl.constexpr):
++    token = tl.program_id(0).to(tl.int64)
++    cols = tl.arange(0, BLOCK)
++    srows = tl.arange(0, S)
++    mask = cols < H
++    m2 = mask[None, :] & (srows[:, None] < S)
++    offs = (token * S + srows[:, None]) * H + cols[None, :]
++    st = tl.load(state_ptr + offs, mask=m2, other=0.0).to(tl.float32)
++    ob = tl.load(out_ptr + token * H + cols, mask=mask, other=0.0).to(tl.float32)
++    w = tl.load(w_ptr + srows[:, None] * H + cols[None, :], mask=m2, other=0.0).to(tl.float32)
++    logit = tl.load(logit_ptr + token * logit_stride + srows).to(tl.float32)
++    scale = 2.0 * tl.sigmoid(logit / S)
++    comb = (st + scale[:, None] * ob[None, :]).to(tl.bfloat16)
++    tl.store(comb_ptr + offs, comb, mask=m2)
++    r = comb.to(tl.float32)
++    inv = tl.rsqrt(tl.sum(r * r, axis=1) / H + eps)
++    tl.store(norm_ptr + offs, (r * inv[:, None] * (1.0 + w)).to(tl.bfloat16), mask=m2)
++
++
++def _hc_triton_combine_norm(state, block_output, injection, weight, eps, streams, hidden):
++    tokens = state.shape[0]
++    combined = torch.empty_like(state)
++    normalized = torch.empty_like(state)
++    _hc_combine_norm_kernel[(tokens,)](
++        state, block_output, injection, injection.stride(0), weight, combined, normalized, eps,
++        H=hidden, S=streams, BLOCK=triton.next_power_of_2(hidden), num_warps=16)
++    return combined, normalized
++
++
+ class _ShardedUpProjection(ReplicatedLinear):
+     """Shard features within every residual stream, preserving stream order."""
+ 
+@@ -355,7 +482,7 @@
+                 + ([self.pad_size] if self.pad_size else []),
+                 bias=False,
+                 params_dtype=config.params_dtype,
+-                quant_config=None,
++                quant_config=_hc_quant_config(),
+                 prefix=maybe_prefix(prefix, "input_mix_weight_down_block_inject"),
+                 return_bias=False,
+                 disable_tp=True,
+@@ -366,7 +493,7 @@
+                 self.lora_rank,
+                 bias=False,
+                 params_dtype=config.params_dtype,
+-                quant_config=None,
++                quant_config=_hc_quant_config(),
+                 prefix=maybe_prefix(prefix, "input_mix_weight_down"),
+                 return_bias=False,
+             )
+@@ -383,7 +510,7 @@
+                 self.hyper_hidden_size,
+                 bias=False,
+                 params_dtype=config.params_dtype,
+-                quant_config=None,
++                quant_config=_hc_quant_config(),
+                 prefix=maybe_prefix(prefix, "input_mix_weight_up"),
+                 return_bias=False,
+             )
+@@ -417,7 +544,19 @@
+     def combine_and_mix(self, hidden_states, prev_block_output, prev_injection):
+         if prev_block_output is None:
+             return self.mix(hidden_states)
+-        if self.workspace is not None and prev_injection is not None:
++        if (
++            _HC_TRITON_COMBINE_NORM
++            and prev_injection is not None
++            and hidden_states.shape[0] > 64
++            and hidden_states.is_contiguous()
++            and prev_block_output.is_contiguous()
++            and prev_injection.stride(1) == 1
++        ):
++            combined, normalized = _hc_triton_combine_norm(
++                hidden_states, prev_block_output, prev_injection, self.hc_norm.weight,
++                self.config.rms_norm_eps, self.hc_count, self.hidden_size,
++            )
++        elif self.workspace is not None and prev_injection is not None:
+             combined, normalized = _hyperconnection_api().run_combine_norm(
+                 hidden_states,
+                 prev_block_output,
+@@ -652,6 +791,24 @@
+             if api is not None
+             else hc_silu(projected_down, self.hc_count)
+         )
++        up_weight = self.input_mix_weight_up.weight
++        if (
++            _HC_FUSED_GATE
++            and up_weight.dtype == torch.bfloat16
++            and bottleneck.is_contiguous()
++            and normalized.is_contiguous()
++            and self.config.hc_lowrank % 64 == 0
++        ):
++            tokens = normalized.shape[0]
++            out = (
++                self.workspace.block_input[:tokens]
++                if self.workspace is not None
++                else normalized.new_empty((tokens, self.hidden_size))
++            )
++            block_input = _hc_fused_up_gated_mean(
++                bottleneck, up_weight, normalized, out, self.hc_count, self.hidden_size
++            )
++            return block_input, injection
+         gate_logits = self.input_mix_weight_up(bottleneck)
+         block_input = (
+             api.run_gate_mean(

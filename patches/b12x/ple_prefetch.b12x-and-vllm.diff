@@ -1,0 +1,144 @@
+--- b12x/sequence/_shared/disk_table.py.orig	2026-11-19 13:21:31.731900501 +0000
++++ b12x/sequence/_shared/disk_table.py	2026-11-19 13:21:57.506629750 +0000
+@@ -220,6 +220,11 @@
+         self._cache_done = torch.cuda.Event()
+         self._cache_used = False
+         self._closed = False
++        # PLE_PREFETCH_PATCH: IDs whose rows are resident in the staging cache, and the prefetch worker.
++        self._resident_ids = None
++        self._prefetch_thread = None
++        self._prefetch_ids_host = torch.empty((self.max_lookups,), dtype=torch.int64, device="cpu", pin_memory=True)
++        self.prefetch_stats = {"hits": 0, "misses": 0, "prefetches": 0, "prefetch_errors": 0}
+ 
+     def _require_open(self):
+         if self._closed:
+@@ -320,6 +325,62 @@
+     def read_rows(self, ids: torch.Tensor, count: int) -> None:
+         self._stage_ids(ids, count)
+         self._read_staged(count)
++        self._resident_ids = None
++
++    def read_rows_cached(self, ids: torch.Tensor, count: int) -> None:
++        """Like read_rows, but skip the disk read when the staged rows already belong to exactly these IDs."""
++        self._stage_ids(ids, count)
++        with torch.cuda.device(self.device):
++            self._ids_ready.synchronize()
++        resident = self._resident_ids
++        if resident is not None and resident.shape[0] == count and count > 0:
++            import numpy as _np
++            if _np.array_equal(resident, self.ids_host[:count].numpy()):
++                self.prefetch_stats["hits"] += 1
++                return
++        self.prefetch_stats["misses"] += 1
++        self._resident_ids = None
++        self._read_staged(count)
++        self._resident_ids = self.ids_host[:count].numpy().copy()
++
++    def prefetch(self, ids: torch.Tensor, count: int) -> None:
++        """Read the rows for device IDs ``ids[:count]`` in a background thread.
++
++        Called on the stream that produced ``ids``, after the previous lookup was enqueued on it: the worker
++        waits for an event recorded here (so every earlier reader of the staging cache has finished), then
++        takes the cache lock, reads the rows and records them as resident.
++        """
++        import threading as _th
++        count = operator.index(count)
++        if not 0 < count <= self.max_lookups or self._gds is not None:
++            return
++        self.join_prefetch()
++        self._prefetch_ids_host[:count].copy_(ids.view(-1)[:count], non_blocking=True)
++        ready = torch.cuda.Event()
++        ready.record(torch.cuda.current_stream(self.device))
++
++        def work():
++            try:
++                ready.synchronize()
++                with self._lock:
++                    self._resident_ids = None
++                    self.ids_host[:count].copy_(self._prefetch_ids_host[:count])
++                    self._native.ple_reader_run(self._reader, self._ids_buffer, self._weight_buffer,
++                                                self._scale_buffer, count)
++                    self._resident_ids = self.ids_host[:count].numpy().copy()
++                    self.prefetch_stats["prefetches"] += 1
++            except Exception:  # noqa: BLE001 - a failed prefetch only costs the normal read later
++                self._resident_ids = None
++                self.prefetch_stats["prefetch_errors"] += 1
++
++        self._prefetch_thread = _th.Thread(target=work, name="ple-prefetch", daemon=True)
++        self._prefetch_thread.start()
++
++    def join_prefetch(self) -> None:
++        thread = self._prefetch_thread
++        if thread is not None:
++            thread.join()
++            self._prefetch_thread = None
+ 
+     def _stage_ids(self, ids: torch.Tensor, count: int) -> None:
+         if self._transaction_thread != threading.get_ident():
+--- b12x/sequence/ple_embedding/_disk.py.orig	2026-11-19 13:21:57.506736727 +0000
++++ b12x/sequence/ple_embedding/_disk.py	2026-11-19 13:21:57.506802343 +0000
+@@ -65,9 +65,16 @@
+ 
+     def _run(self, binding: Binding, *, state, token_count: int) -> None:
+         layout = self.layout
++        # PLE_PREFETCH_PATCH: prefetch mode hashes the predicted batch and reads its rows in the background.
++        if getattr(self, "_prefetch_next", False):
++            self._prefetch_next = False
++            if token_count:
++                state.hash_state.run(binding._hash_binding, token_count=token_count)
++                self._cache.prefetch(binding._ids, token_count * layout.head_count)
++            return
+         with self._cache.transaction():
+             state.hash_state.run(binding._hash_binding, token_count=token_count)
+-            self._cache.read_rows(binding._ids, token_count * layout.head_count)
++            self._cache.read_rows_cached(binding._ids, token_count * layout.head_count)
+             if token_count:
+                 weight_scale = self.weight_scale if self._cache.scale_row_bytes else binding.weight_scale
+                 state.run_lookup(
+--- vllm/models/qwen4_exp/nvidia/model_state.py.orig	2026-11-19 13:21:57.506966295 +0000
++++ vllm/models/qwen4_exp/nvidia/model_state.py	2026-11-19 13:21:57.507053128 +0000
+@@ -27,6 +27,8 @@
+ 
+ from .b12x_ple import B12xNGramEmbedding
+ from .backend import uses_b12x
++import os as _os_pf
++_PLE_PREFETCH = _os_pf.environ.get("VLLM_PLE_PREFETCH", "0") == "1"
+ 
+ 
+ @dataclass
+@@ -485,11 +487,35 @@
+             embedding.prepare_disk(
+                 input_batch.input_ids, query_start_loc, ngram_context
+             )
++        # PLE_PREFETCH_PATCH: with one request still prefilling, its next chunk is (almost always) the next
++        # prompt slice; stage that chunk's PLE rows while this step runs. Misses fall back to a normal read.
++        if self.disk_embeddings and _PLE_PREFETCH and input_batch.num_reqs == 1:
++            self._ple_prefetch_next_chunk(input_batch, req_states, query_start_loc, ngram_context)
+         model_inputs.update(
+             query_start_loc=query_start_loc, ngram_context=ngram_context
+         )
+         return model_inputs
+ 
++    def _ple_prefetch_next_chunk(self, input_batch, req_states, query_start_loc, ngram_context) -> None:
++        start = int(input_batch.num_computed_tokens_np[0]) + int(input_batch.num_scheduled_tokens[0])
++        prefill_len = int(input_batch.prefill_len_np[0])
++        length = min(prefill_len - start, int(req_states.max_num_batched_tokens))
++        if length <= 0 or start < self.ngram_context_len:
++            return
++        if getattr(self, "_ple_pf_qsl", None) is None:
++            self._ple_pf_qsl = torch.empty_like(query_start_loc)
++            self._ple_pf_ctx = torch.empty_like(ngram_context)
++        req = int(input_batch.idx_mapping_np[0])
++        tokens = req_states.all_token_ids.gpu[req]
++        qsl = self._ple_pf_qsl
++        qsl.fill_(length)
++        qsl[0] = 0
++        ctx = self._ple_pf_ctx
++        ctx.fill_(self.ngram_eos_token_id)
++        ctx[0].copy_(tokens[start - self.ngram_context_len : start])
++        for embedding in self.disk_embeddings:
++            embedding.prefetch_disk(tokens[start : start + length], qsl, ctx)
++
+     def prepare_dummy_inputs(
+         self,
+         num_reqs: int,

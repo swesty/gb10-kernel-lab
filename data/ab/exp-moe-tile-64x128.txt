@@ -1,0 +1,9 @@
+=== moe-tile-64x128 23:37:08
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          6737.44   
+Median TTFT (ms):                        6749.55   
+real-text prefill 14571 tokens: 6.27 s
+real-text prefill 14568 tokens: 6.26 s
+real-text prefill 14568 tokens: 6.26 s
+decode c=4 real text: per-request [8.5, 8.9, 8.5, 8.7] chunks/s, mean TTFT 2.72 s, MTP acceptance 54.7% (2.19 accepted per step)

@@ -1,0 +1,70 @@
+=== soak start 2026-11-19T15:27:35 UTC, MemAvailable 20.8 GiB
+--- 1. long prompts: 32K in / 256 out, 4 requests, c=1 (8 chunks each)
+Successful requests:                     4         
+Failed requests:                         0         
+Benchmark duration (s):                  68.62     
+Request throughput (req/s):              0.06      
+Output token throughput (tok/s):         14.92     
+Total token throughput (tok/s):          1924.97   
+Mean TTFT (ms):                          10152.29  
+P99 TTFT (ms):                           10259.94  
+Mean TPOT (ms):                          27.46     
+P99 TPOT (ms):                           32.08     
+--- 2. mixed: 1-16K in (range 0.9) / 512 out, 24 requests, c=4
+Successful requests:                     24        
+Failed requests:                         0         
+Benchmark duration (s):                  221.93    
+Request throughput (req/s):              0.11      
+Output token throughput (tok/s):         45.26     
+Total token throughput (tok/s):          964.92    
+Mean TTFT (ms):                          4962.65   
+P99 TTFT (ms):                           12140.75  
+Mean TPOT (ms):                          83.43     
+P99 TPOT (ms):                           214.65    
+--- 3. decode-heavy: 2K in / 256 out, 32 requests, c=8
+Successful requests:                     32        
+Failed requests:                         0         
+Benchmark duration (s):                  102.14    
+Request throughput (req/s):              0.31      
+Output token throughput (tok/s):         80.21     
+Total token throughput (tok/s):          721.85    
+Mean TTFT (ms):                          2309.30   
+P99 TTFT (ms):                           5976.05   
+Mean TPOT (ms):                          85.88     
+P99 TPOT (ms):                           148.12    
+--- 4. very long prompt: 128K in / 64 out, 1 request
+Successful requests:                     1         
+Failed requests:                         0         
+Benchmark duration (s):                  50.04     
+Request throughput (req/s):              0.02      
+Output token throughput (tok/s):         1.28      
+Total token throughput (tok/s):          2620.71   
+Mean TTFT (ms):                          47717.33  
+P99 TTFT (ms):                           47717.33  
+Mean TPOT (ms):                          36.81     
+P99 TPOT (ms):                           36.81     
+--- 5. bursty: 4-12K in / 128 out, 16 requests, c=8 (prefill-heavy concurrency)
+Successful requests:                     16        
+Failed requests:                         0         
+Benchmark duration (s):                  68.13     
+Request throughput (req/s):              0.23      
+Output token throughput (tok/s):         31.57     
+Total token throughput (tok/s):          1963.85   
+Mean TTFT (ms):                          10322.77  
+P99 TTFT (ms):                           19331.59  
+Mean TPOT (ms):                          170.71    
+P99 TPOT (ms):                           343.49    
+--- 6. real-text quality + decode (greedy summaries, c=1 and c=4)
+greedy output: "The documentation outlines Python's `collections` module, which provides specialized data structures like `ChainMap`, `Counter`, and `namedtuple` for efficient data management and counting. It also details the `itertools` and `functools` modules, offering tools for creating efficient iterators, performing functional programming tasks, and implementing caching or partial function application. Finally, the text covers the `asyncio` module, describing its asynchronous programming framework, including event loops, synchronization primitives,"
+real-text prefill 14570 tokens: 4.83 s
+real-text prefill 14572 tokens: 4.85 s
+real-text prefill 14567 tokens: 4.85 s
+decode c=4 real text: per-request [26.3, 26.9, 29.2, 27.9] tokens/s, mean TTFT 2.35 s, MTP acceptance 54.7% (2.19 accepted per step)
+decode c=1 real text: 48.6 tokens/s (TTFT 0.06 s), MTP acceptance 50.9%
+soak prompt_tokens 6976 prompt_logprobs ok greedy tokens 96
+--- checks
+health: ok  MemAvailable 18.8 GiB
+engine errors since start: 0
+fusion fallbacks since start: 0
+OOM kills since start: 0
+=== soak end 15:37:18 UTC

@@ -1,0 +1,244 @@
+--- vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py.orig	2026-11-18 19:16:08
++++ vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py	2026-11-19 09:03:10
+@@ -195,6 +195,7 @@
+ logger = init_logger(__name__)
+ 
+ MAX_FUSED_GDN_MTP_TOKENS = 8
++_GDN_IDENTITY_FASTPATH = os.environ.get("VLLM_GDN_IDENTITY_FASTPATH", "0") == "1"
+ FUSED_GDN_STATE_DTYPES = (torch.float32, torch.bfloat16)
+ 
+ 
+@@ -623,8 +624,58 @@
+         if not output_final_state:
+             final_state = None
+         return o, final_state
++
++
++import os as _os_nq
++_GDN_FUSED_NORM_QUANT = _os_nq.environ.get("VLLM_GDN_FUSED_NORM_QUANT", "0") == "1"
++
++
++class _GdnNormQuantProducer:
++    """NORM_QUANT_FUSION_PATCH: fills b12x's MXFP8 workspace from the deferred gated norm."""
++
++    def __init__(self, job):
++        self.job, self.m, self.k, self.consumed = job, job["rows"], job["weight"].numel(), False
++
++    def __call__(self, values, scales, alpha, m):
++        from .gdn_norm_mxfp8 import gated_rmsnorm_mxfp8
++        j = self.job
++        gated_rmsnorm_mxfp8(j["x"], j["z"], j["weight"], j["eps"], j["live"], m, values, scales, alpha,
++                            group_size=j["group"], activation=j["activation"])
++        self.consumed = True
+ 
+ 
++def _gdn_materialize_norm(job):
++    from vllm.third_party.flash_linear_attention.ops.layernorm_guard import layer_norm_fwd
++    out, live, rows = job["out"], job["live"], job["rows"]
++    layer_norm_fwd(job["x"], job["weight"], None, job["eps"], z=job["z"],
++                   out=out[:live].view(live, -1), group_size=job["group"], norm_before_gate=True,
++                   is_rms_norm=True, activation=job["activation"])
++    if live < rows:
++        out[live:].zero_()
++
++
++def _gdn_out_proj_fused(layer, job, core_attn_out):
++    from b12x.gemm.blockscaled._preparation import B12X_MXFP8_PREQUANT
++    producer = _GdnNormQuantProducer(job)
++    token = B12X_MXFP8_PREQUANT.set(producer)
++    try:
++        output, _ = layer.out_proj(core_attn_out.flatten(-2))
++    finally:
++        B12X_MXFP8_PREQUANT.reset(token)
++    if not producer.consumed:
++        _gdn_materialize_norm(job)
++        output, _ = layer.out_proj(core_attn_out.flatten(-2))
++        _GDN_NQ_NO_DEFER.add(job["rows"])
++        print(f"[gdn norm-quant fusion] rows={job['rows']} fell back; not deferring this size again", flush=True)
++    else:
++        _GDN_NQ_STATS["fused"] += 1
++    return output
++
++
++_GDN_NQ_STATS = {"fused": 0}
++_GDN_NQ_NO_DEFER: set = set()
++
++
+ @PluggableLayer.register("qwen_gated_delta_net_attention")
+ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
+     def get_state_shape(
+@@ -1730,19 +1781,28 @@
+             and self.norm.weight.dtype in (torch.bfloat16, torch.float32)
+         )
+         if use_fused_gdn_decode:
+-            core_attn_out = torch.zeros(
++            # The identity fast path writes (or zeroes) every row itself.
++            alloc = torch.empty if self._gdn_identity_will_run(num_tokens) else torch.zeros
++            core_attn_out = alloc(
+                 (num_tokens, self.num_v_heads // self.tp_size, self.head_v_dim),
+                 dtype=hidden_states.dtype,
+                 device=hidden_states.device,
+-            )
+-            torch.ops.vllm.qwen_gdn_attention_core_fused_norm_packed(
+-                mixed_qkvz,
+-                ba,
+-                core_attn_out,
+-                layer_name=_encode_layer_name(self.prefix),
+             )
+-            output, _ = self.out_proj(core_attn_out.flatten(-2))
+-            return output
++            self._gdn_defer_norm_ok = _GDN_FUSED_NORM_QUANT and not torch.cuda.is_current_stream_capturing()
++            try:
++                torch.ops.vllm.qwen_gdn_attention_core_fused_norm_packed(
++                    mixed_qkvz,
++                    ba,
++                    core_attn_out,
++                    layer_name=_encode_layer_name(self.prefix),
++                )
++            finally:
++                self._gdn_defer_norm_ok = False
++            job = self.__dict__.pop("_gdn_pending_norm", None)
++            if job is None:
++                output, _ = self.out_proj(core_attn_out.flatten(-2))
++                return output
++            return _gdn_out_proj_fused(self, job, core_attn_out)
+ 
+         if self.gqa_interleaved_layout:
+             # Qwen3-Next: unpack the interleaved GQA layout
+@@ -2955,8 +3015,111 @@
+             core_attn_out[:num_actual_tokens],
+             output_gate[:num_actual_tokens],
+             core_attn_out[:num_actual_tokens],
++        )
++
++    def _gdn_identity_will_run(self, num_tokens: int) -> bool:
++        """Mirror of the dispatch in _forward_core_fused_norm / _forward_core_b12x_mixed."""
++        if not _GDN_IDENTITY_FASTPATH or torch.cuda.is_current_stream_capturing():
++            return False
++        raw = get_forward_context().attn_metadata
++        metadata = raw.get(self.prefix) if isinstance(raw, dict) else None
++        if not isinstance(metadata, GDNAttentionMetadata) or metadata.num_prefills <= 0:
++            return False
++        mixed = metadata.b12x_mixed
++        return bool(
++            mixed is not None
++            and self._b12x_prefill is not None
++            and self.gdn_decode_kernel == "b12x"
++            and getattr(mixed, "host_identity", False)
++            and 0 < mixed.host_non_spec_tokens <= num_tokens
+         )
+ 
++    def _forward_core_b12x_identity(
++        self,
++        *,
++        mixed_qkv: torch.Tensor,
++        b: torch.Tensor,
++        a: torch.Tensor,
++        output_gate: torch.Tensor,
++        core_attn_out: torch.Tensor,
++        metadata,
++        runner,
++        conv_state: torch.Tensor,
++        weights: torch.Tensor,
++    ) -> None:
++        """Eager batch with no verification rows: the non-spec worklist is the
++        identity, so read inputs in place and write the normed output directly
++        (no gathers, zero fill or scatter)."""
++        from vllm.third_party.flash_linear_attention.ops.layernorm_guard import (
++            layer_norm_fwd,
++        )
++
++        rows = mixed_qkv.shape[0]
++        live = metadata.host_non_spec_tokens
++        conv_out = torch.empty(
++            (rows, mixed_qkv.shape[1]), dtype=mixed_qkv.dtype, device=mixed_qkv.device
++        )
++        causal_conv1d_fn(
++            mixed_qkv.transpose(0, 1),
++            weights,
++            self.conv1d.bias,
++            activation=self.activation,
++            conv_states=conv_state,
++            has_initial_state=metadata.has_initial_state,
++            cache_indices=metadata.state_indices,
++            query_start_loc=metadata.query_start_loc,
++            metadata=metadata.convolution_metadata(rows),
++            out=conv_out.transpose(0, 1),
++        )
++        prefill_output = torch.empty_like(core_attn_out)
++        runner.run(
++            mixed_qkv=conv_out,
++            a=a.contiguous(),
++            b=b.contiguous(),
++            query_start_loc=metadata.query_start_loc,
++            state_indices=metadata.state_indices,
++            has_initial_state=metadata.has_initial_state,
++            live_counts=metadata.live_counts,
++            checkpoint=metadata.checkpoint,
++            output=prefill_output,
++            eps=self.layer_norm_epsilon,
++        )
++        heads, dim = core_attn_out.shape[-2], core_attn_out.shape[-1]
++        group = dim if self.norm.group_size is None else self.norm.group_size
++        weight = getattr(self, "_gdn_identity_norm_weight", None)
++        if weight is None or weight.numel() != heads * dim:
++            weight = self.norm.weight.contiguous().repeat(heads * dim // self.norm.weight.numel())
++            self._gdn_identity_norm_weight = weight
++        bias = self.norm.bias
++        if bias is not None:
++            bias = bias.contiguous().repeat(heads * dim // bias.numel())
++        gate = output_gate[:live]
++        gate_2d = gate.as_strided((live, heads * dim), (gate.stride(0), 1))
++        assert gate.stride(-1) == 1 and gate.stride(-2) == dim
++        # NORM_QUANT_FUSION_PATCH: hand the norm to out_proj's MXFP8 quantisation when allowed.
++        if (getattr(self, "_gdn_defer_norm_ok", False) and rows > 80 and rows not in _GDN_NQ_NO_DEFER
++                and bias is None and self.norm.norm_before_gate
++                and group % 32 == 0 and self.norm.activation in ("silu", "swish", "sigmoid")):
++            self._gdn_pending_norm = dict(
++                x=prefill_output[:live].reshape(live, heads * dim), z=gate_2d, weight=weight,
++                eps=self.norm.eps, live=live, rows=rows, group=group, activation=self.norm.activation,
++                out=core_attn_out)
++            return
++        layer_norm_fwd(
++            prefill_output[:live].reshape(live, heads * dim),
++            weight,
++            bias,
++            self.norm.eps,
++            z=gate_2d,
++            out=core_attn_out[:live].view(live, heads * dim),
++            group_size=group,
++            norm_before_gate=self.norm.norm_before_gate,
++            is_rms_norm=True,
++            activation=self.norm.activation,
++        )
++        if live < rows:
++            core_attn_out[live:].zero_()
++
+     def _forward_core_b12x_mixed(
+         self,
+         *,
+@@ -2982,6 +3145,24 @@
+             else self.kv_cache[0].transpose(-1, -2)
+         )
+         weights = self.conv1d.weight.view(self.conv1d.weight.size(0), -1)
++        if (
++            _GDN_IDENTITY_FASTPATH
++            and metadata.host_identity
++            and 0 < metadata.host_non_spec_tokens <= rows
++            and not torch.cuda.is_current_stream_capturing()
++        ):
++            self._forward_core_b12x_identity(
++                mixed_qkv=mixed_qkv,
++                b=b,
++                a=a,
++                output_gate=output_gate,
++                core_attn_out=core_attn_out,
++                metadata=metadata,
++                runner=runner,
++                conv_state=conv_state,
++                weights=weights,
++            )
++            return
+         non_spec_indices = metadata.token_indices[:rows]
+         packed = mixed_qkv.index_select(0, non_spec_indices)
+         convolved = causal_conv1d_fn(

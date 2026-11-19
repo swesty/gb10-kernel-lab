@@ -1,0 +1,102 @@
+== qkvz  M=4096 N=16384 K=2560
+  [rm=0,sw=1] default            med  9980.7 us  (placements 9469-10051)  kern(p0) 10137.8
+  [rm=0,sw=1] 128x64 bk128 swap=0 lmu=True       med  6333.2 us  (placements 5846-6848)  kern(p0) 6317.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 128x128 bk128 swap=0 lmu=False     med  6357.8 us  (placements 5312-6490)  kern(p0) 6483.5  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 128x128 bk64 swap=0 lmu=False      med  6460.1 us  (placements 5997-6754)  kern(p0) 6945.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] default            med  2508.4 us  (placements 2442-2777)  kern(p0) 2449.2
+  [rm=0,sw=8] 128x128 bk64 swap=0 lmu=False      med  2158.3 us  (placements 2140-2166)  kern(p0) 2170.1  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 128x64 bk128 swap=0 lmu=True       med  2196.2 us  (placements 2186-2196)  kern(p0) 2188.0  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 64x128 bk128 swap=0 lmu=True       med  2489.0 us  (placements 2447-2530)  kern(p0) 2458.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] default            med  2316.0 us  (placements 2311-2364)  kern(p0) 2306.2
+  [rm=1,sw=8] 128x128 bk64 swap=0 lmu=False      med  2063.1 us  (placements 2042-2068)  kern(p0) 2082.4  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 128x64 bk128 swap=0 lmu=True       med  2213.6 us  (placements 2189-2225)  kern(p0) 2225.1  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 64x128 bk128 swap=0 lmu=True       med  2309.9 us  (placements 2296-2316)  kern(p0) 2319.2  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] default            med  4319.3 us  (placements 3763-4776)  kern(p0) 4385.8
+  [stock    ] 128x128 bk64 swap=0 lmu=True       med  1967.8 us  (placements 1956-1972)  kern(p0) 1955.8  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 128x128 bk64 swap=0 lmu=False      med  2166.5 us  (placements 2153-2183)  kern(p0) 2240.4  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 128x64 bk128 swap=0 lmu=True       med  2214.7 us  (placements 2204-2236)  kern(p0) 2201.2  err 1.66e-03 vs-live 0.0e+00
+== ba  M=4096 N=96 K=2560
+  [rm=0,sw=1] default            med   104.2 us  (placements 99-107)  kern(p0) 100.7
+  [rm=0,sw=1] 64x128 bk128 swap=0 lmu=True       med   103.2 us  (placements 98-108)  kern(p0) 102.0  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] default(64x128,bk128)              med   104.2 us  (placements 99-107)  kern(p0) 100.7  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 64x64 bk128 swap=0 lmu=True        med   107.4 us  (placements 106-109)  kern(p0) 104.0  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] default            med   101.1 us  (placements 100-102)  kern(p0) 97.6
+  [rm=0,sw=8] default(64x128,bk128)              med   101.1 us  (placements 100-102)  kern(p0) 97.6  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 64x128 bk128 swap=0 lmu=True       med   101.1 us  (placements 98-103)  kern(p0) 96.7  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 128x128 bk128 swap=0 lmu=False     med   102.1 us  (placements 101-111)  kern(p0) 104.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] default            med   162.7 us  (placements 160-172)  kern(p0) 167.7
+  [rm=1,sw=8] 128x64 bk128 swap=0 lmu=True       med   116.4 us  (placements 115-118)  kern(p0) 113.7  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 64x64 bk128 swap=0 lmu=True        med   116.4 us  (placements 114-118)  kern(p0) 115.1  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 128x128 bk64 swap=0 lmu=False      med   151.3 us  (placements 145-153)  kern(p0) 156.3  err 1.96e+00 vs-live 2.0e+00
+  [stock    ] default            med   104.2 us  (placements 100-106)  kern(p0) 98.1
+  [stock    ] 32x128 bk128 swap=0 lmu=False      med   101.1 us  (placements 98-102)  kern(p0) 98.5  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 32x128 bk128 swap=0 lmu=True       med   101.1 us  (placements 98-102)  kern(p0) 98.2  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 64x128 bk128 swap=0 lmu=False      med   103.2 us  (placements 100-106)  kern(p0) 98.8  err 1.66e-03 vs-live 0.0e+00
+== out  M=4096 N=2560 K=6144
+  [rm=0,sw=1] default            med   931.7 us  (placements 918-939)  kern(p0) 920.2
+  [rm=0,sw=1] 128x128 bk64 swap=0 lmu=False      med   831.2 us  (placements 817-854)  kern(p0) 839.4  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 64x128 bk128 swap=0 lmu=True       med   930.5 us  (placements 923-937)  kern(p0) 920.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] default(64x128,bk128)              med   931.7 us  (placements 918-939)  kern(p0) 920.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] default            med   894.7 us  (placements 870-906)  kern(p0) 869.4
+  [rm=0,sw=8] default(64x128,bk128)              med   894.7 us  (placements 870-906)  kern(p0) 869.4  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 64x128 bk128 swap=0 lmu=True       med   898.8 us  (placements 875-907)  kern(p0) 873.5  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 128x64 bk128 swap=0 lmu=True       med   916.1 us  (placements 899-1127)  kern(p0) 901.0  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] default            med  1047.3 us  (placements 1035-1056)  kern(p0) 1037.8
+  [rm=1,sw=8] 128x128 bk64 swap=0 lmu=False      med   932.6 us  (placements 904-941)  kern(p0) 914.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 128x64 bk128 swap=0 lmu=True       med   932.6 us  (placements 917-1107)  kern(p0) 912.3  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 64x128 bk128 swap=0 lmu=True       med  1044.2 us  (placements 1037-1065)  kern(p0) 1179.9  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] default            med  1346.5 us  (placements 1218-2188)  kern(p0) 1194.9
+  [stock    ] 128x128 bk64 swap=0 lmu=False      med  1180.4 us  (placements 1123-1592)  kern(p0) 1108.1  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] default(64x128,bk128)              med  1346.5 us  (placements 1218-2188)  kern(p0) 1194.9  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 64x128 bk128 swap=0 lmu=True       med  1352.4 us  (placements 1212-2159)  kern(p0) 1118.4  err 1.66e-03 vs-live 0.0e+00
+== gu  M=4096 N=1280 K=2560
+  [rm=0,sw=1] default            med   214.7 us  (placements 213-215)  kern(p0) 211.3
+  [rm=0,sw=1] 128x128 bk64 swap=0 lmu=False      med   192.2 us  (placements 187-199)  kern(p0) 186.1  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 128x64 bk128 swap=0 lmu=True       med   210.7 us  (placements 209-212)  kern(p0) 210.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 64x128 bk128 swap=0 lmu=True       med   213.7 us  (placements 212-214)  kern(p0) 209.7  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] default            med   215.8 us  (placements 215-218)  kern(p0) 214.5
+  [rm=0,sw=8] 128x128 bk64 swap=0 lmu=False      med   198.6 us  (placements 196-204)  kern(p0) 191.8  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] default(64x128,bk128)              med   215.8 us  (placements 215-218)  kern(p0) 214.5  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 64x128 bk128 swap=0 lmu=True       med   215.8 us  (placements 215-219)  kern(p0) 212.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] default            med   321.2 us  (placements 318-387)  kern(p0) 316.5
+  [rm=1,sw=8] 128x64 bk128 swap=0 lmu=True       med   254.7 us  (placements 254-260)  kern(p0) 256.4  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 128x128 bk64 swap=0 lmu=False      med   267.0 us  (placements 266-268)  kern(p0) 263.0  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 64x64 bk128 swap=0 lmu=True        med   306.9 us  (placements 304-311)  kern(p0) 307.2  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] default            med   262.8 us  (placements 260-266)  kern(p0) 255.9
+  [stock    ] 128x128 bk64 swap=0 lmu=True       med   247.5 us  (placements 241-254)  kern(p0) 237.9  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 128x128 bk64 swap=0 lmu=False      med   254.7 us  (placements 252-256)  kern(p0) 248.4  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] default(64x128,bk128)              med   262.8 us  (placements 260-266)  kern(p0) 255.9  err 1.66e-03 vs-live 0.0e+00
+== down  M=4096 N=2560 K=640
+  [rm=0,sw=1] default            med   142.0 us  (placements 137-143)  kern(p0) 139.0
+  [rm=0,sw=1] 128x64 bk128 swap=0 lmu=True       med   139.2 us  (placements 136-141)  kern(p0) 137.0  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 64x128 bk128 swap=0 lmu=True       med   141.1 us  (placements 137-145)  kern(p0) 137.6  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] default(64x128,bk128)              med   142.0 us  (placements 137-143)  kern(p0) 139.0  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] default            med   140.0 us  (placements 138-142)  kern(p0) 137.7
+  [rm=0,sw=8] default(64x128,bk128)              med   140.0 us  (placements 138-142)  kern(p0) 137.7  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 64x128 bk128 swap=0 lmu=True       med   141.0 us  (placements 141-147)  kern(p0) 146.2  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 128x64 bk128 swap=0 lmu=True       med   145.2 us  (placements 143-148)  kern(p0) 142.6  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] default            med   159.5 us  (placements 156-160)  kern(p0) 156.9
+  [rm=1,sw=8] 128x64 bk128 swap=0 lmu=True       med   143.0 us  (placements 140-144)  kern(p0) 141.9  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 64x64 bk128 swap=0 lmu=True        med   152.6 us  (placements 150-156)  kern(p0) 151.5  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 128x128 bk64 swap=0 lmu=False      med   158.4 us  (placements 156-160)  kern(p0) 153.0  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] default            med   155.5 us  (placements 149-158)  kern(p0) 152.7
+  [stock    ] 64x128 bk128 swap=0 lmu=True       med   153.3 us  (placements 147-155)  kern(p0) 151.9  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 64x128 bk128 swap=0 lmu=False      med   155.4 us  (placements 147-158)  kern(p0) 165.4  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] default(64x128,bk128)              med   155.5 us  (placements 149-158)  kern(p0) 152.7  err 1.66e-03 vs-live 0.0e+00
+== attn_qkv  M=4096 N=13312 K=2560
+  [rm=0,sw=1] default            med  6766.5 us  (placements 6056-7021)  kern(p0) 6149.3
+  [rm=0,sw=1] 128x64 bk128 swap=0 lmu=True       med  4774.7 us  (placements 4653-5028)  kern(p0) 4657.9  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 128x128 bk64 swap=0 lmu=False      med  5022.7 us  (placements 4468-5345)  kern(p0) 5028.3  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=1] 128x128 bk128 swap=0 lmu=False     med  5073.8 us  (placements 4752-5234)  kern(p0) 5165.9  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] default            med  2044.6 us  (placements 2002-2074)  kern(p0) 2216.5
+  [rm=0,sw=8] 128x128 bk64 swap=0 lmu=False      med  1769.2 us  (placements 1761-1783)  kern(p0) 1759.9  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 128x64 bk128 swap=0 lmu=True       med  1795.8 us  (placements 1786-1870)  kern(p0) 1791.3  err 1.66e-03 vs-live 0.0e+00
+  [rm=0,sw=8] 64x128 bk128 swap=0 lmu=True       med  2041.5 us  (placements 1996-2066)  kern(p0) 2045.3  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] default            med  1896.3 us  (placements 1888-1902)  kern(p0) 1924.5
+  [rm=1,sw=8] 128x128 bk64 swap=0 lmu=False      med  1691.4 us  (placements 1681-1703)  kern(p0) 1696.0  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] 128x64 bk128 swap=0 lmu=True       med  1804.0 us  (placements 1799-1845)  kern(p0) 1811.3  err 1.66e-03 vs-live 0.0e+00
+  [rm=1,sw=8] default(64x128,bk128)              med  1896.3 us  (placements 1888-1902)  kern(p0) 1924.5  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] default            med  1839.0 us  (placements 1833-1853)  kern(p0) 1839.9
+  [stock    ] 128x128 bk64 swap=0 lmu=True       med  1629.0 us  (placements 1609-1632)  kern(p0) 1624.8  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 128x64 bk128 swap=0 lmu=True       med  1822.6 us  (placements 1815-1835)  kern(p0) 1827.3  err 1.66e-03 vs-live 0.0e+00
+  [stock    ] 128x64 bk128 swap=0 lmu=False      med  1832.7 us  (placements 1818-1834)  kern(p0) 1924.2  err 1.66e-03 vs-live 0.0e+00

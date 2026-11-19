@@ -1,0 +1,100 @@
+# Recipe: Qwen3.8-Flash-Next-NVFP4 (solo) + GB10 prefill optimisations
+# Same as qwen3.8-flash-next-nvfp4-solo, plus mods/flashnext-gb10-fast and its switches.
+# Tested on one DGX Spark (GB10) with eugr/spark-vllm-b12x@sha256:66147fc1420dbd59a7bb1411697d81a8231c298105b61c5962179cd146b4a41b
+# tagged as vllm-node-b12x:latest, model snapshot 6909a5bed089. Prefill ~28-31% faster, decode unchanged.
+# Every switch below is independent; remove a line to turn that change off.
+
+recipe_version: "1"
+name: Qwen3.8-Flash-Next-NVFP4 (Solo, GB10 prefill optimisations)
+description: Qwen3.8-Flash-Next-NVFP4 on one DGX Spark with PLE disk offload and the gb10-kernel-lab prefill patches
+
+model: local-inference-lab/Qwen3.8-Flash-Next-NVFP4
+container: vllm-node-b12x
+
+build_args:
+  - --exp-b12x
+
+solo_only: true
+
+mods:
+  - mods/flashnext-gb10-fast
+
+defaults:
+  port: 8000
+  host: 0.0.0.0
+  tensor_parallel: 1
+  pipeline_parallel: 1
+  block_size: 16
+  max_model_len: 262144
+  max_num_seqs: 8
+  max_num_batched_tokens: 4096
+  num_speculative_tokens: 4
+  gpu_memory_utilization: 0.8
+
+env:
+  VLLM_PLE_TABLE_MEMORY: "disk"
+  CUTE_DSL_ARCH: "sm_121a"
+  SAFETENSORS_FAST_GPU: "1"
+  VLLM_WORKER_MULTIPROC_METHOD: "spawn"
+  VLLM_SSM_CONV_STATE_LAYOUT: "DS"
+  VLLM_USE_AOT_COMPILE: "1"
+  VLLM_USE_MEGA_AOT_ARTIFACT: "1"
+  VLLM_USE_V2_MODEL_RUNNER: "1"
+  B12X_POLICY_MODE: "auto"
+  VLLM_MXFP8_LM_HEAD: "1" 
+  VLLM_B12X_MOE_FP4_LAYER_MAX_INPUT_SCALE: "w13"
+  # --- gb10-kernel-lab prefill optimisations (see recipe/README.md) ---
+  # Selected-position (QSA) attention: pipelined loads, QK/softmax on all warps, fixed swizzle.
+  B12X_SELECTED_PIPELINE: "1"
+  B12X_SELECTED_SPLITQK: "1"
+  B12X_SELECTED_SWZ333: "1"
+  # HyperConnection: fused up-projection + gated mean; Triton combine-norm for prefill.
+  VLLM_HC_FUSED_GATE: "1"
+  VLLM_HC_TRITON_COMBINE_NORM: "1"
+  # GDN: skip gathers/scatter when the batch is the identity (no verification rows).
+  VLLM_GDN_IDENTITY_FASTPATH: "1"
+  # Attention: fused q/k RMSNorm + mRoPE; gate read in place.
+  VLLM_QSA_FUSED_QK_NORM: "1"
+  # MTP feedback projection: 128-wide tiles, N-fastest raster (was 22x slower than needed).
+  B12X_MTP_TILE_N: "128"
+  B12X_MTP_STAGES: "2"
+  B12X_MTP_RASTER_N: "1"
+  # Dense MXFP8 GEMMs: walk tiles along N for N = 2560 outputs; 128x128 tiles for qkvz / attention qkv.
+  B12X_DENSE_RASTER_N_MIN_CTAS: "20"
+  B12X_DENSE_RASTER_N_MAX_CTAS: "20"
+  B12X_DENSE_TILE_OVERRIDE: "16384x2560=128x128x64:lmu,13312x2560=128x128x64:lmu"
+  # PLE n-gram table on disk: deeper io_uring queue; prefetch the next prefill chunk's rows.
+  VLLM_PLE_DISK_QUEUE_DEPTH: "256"
+  VLLM_PLE_PREFETCH: "1"
+  # MXFP8 activation quantisation fused into the GDN gated norm and the attention output gate.
+  VLLM_GDN_FUSED_NORM_QUANT: "1"
+  VLLM_QSA_FUSED_GATE_QUANT: "1"
+
+command: |
+  vllm serve local-inference-lab/Qwen3.8-Flash-Next-NVFP4 \
+    --host {host} \
+    --port {port} \
+    --tensor-parallel-size {tensor_parallel} \
+    --pipeline-parallel-size {pipeline_parallel} \
+    --mamba-cache-mode align \
+    --enable-prefix-caching \
+    --enable-chunked-prefill \
+    --dtype bfloat16 \
+    --kv-cache-dtype fp8 \
+    --quantization modelopt_mixed \
+    --block-size {block_size} \
+    --load-format b12x \
+    --max-model-len {max_model_len} \
+    --max-num-seqs {max_num_seqs} \
+    --max-num-batched-tokens {max_num_batched_tokens} \
+    --speculative-config '{{"method":"mtp","num_speculative_tokens":{num_speculative_tokens}}}' \
+    --gdn-decode-kernel b12x \
+    --linear-backend b12x \
+    --moe-backend b12x \
+    --no-enable-flashinfer-autotune \
+    --mm-encoder-tp-mode data \
+    --reasoning-parser qwen3 \
+    --tool-call-parser qwen3_xml \
+    --enable-auto-tool-choice \
+    --compilation-config '{{"pass_config":{{"fuse_act_quant":true}}}}' \
+    --gpu-memory-utilization {gpu_memory_utilization}

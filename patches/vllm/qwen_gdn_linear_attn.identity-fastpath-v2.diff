@@ -1,0 +1,149 @@
+--- qwen_gdn_linear_attn.orig.py	2026-11-18 19:14:42
++++ qwen_gdn_linear_attn.fast2.py	2026-11-18 20:14:57
+@@ -195,6 +195,7 @@
+ logger = init_logger(__name__)
+ 
+ MAX_FUSED_GDN_MTP_TOKENS = 8
++_GDN_IDENTITY_FASTPATH = os.environ.get("VLLM_GDN_IDENTITY_FASTPATH", "0") == "1"
+ FUSED_GDN_STATE_DTYPES = (torch.float32, torch.bfloat16)
+ 
+ 
+@@ -1730,7 +1731,9 @@
+             and self.norm.weight.dtype in (torch.bfloat16, torch.float32)
+         )
+         if use_fused_gdn_decode:
+-            core_attn_out = torch.zeros(
++            # The identity fast path writes (or zeroes) every row itself.
++            alloc = torch.empty if self._gdn_identity_will_run(num_tokens) else torch.zeros
++            core_attn_out = alloc(
+                 (num_tokens, self.num_v_heads // self.tp_size, self.head_v_dim),
+                 dtype=hidden_states.dtype,
+                 device=hidden_states.device,
+@@ -2955,8 +2958,102 @@
+             core_attn_out[:num_actual_tokens],
+             output_gate[:num_actual_tokens],
+             core_attn_out[:num_actual_tokens],
++        )
++
++    def _gdn_identity_will_run(self, num_tokens: int) -> bool:
++        """Mirror of the dispatch in _forward_core_fused_norm / _forward_core_b12x_mixed."""
++        if not _GDN_IDENTITY_FASTPATH or torch.cuda.is_current_stream_capturing():
++            return False
++        raw = get_forward_context().attn_metadata
++        metadata = raw.get(self.prefix) if isinstance(raw, dict) else None
++        if not isinstance(metadata, GDNAttentionMetadata) or metadata.num_prefills <= 0:
++            return False
++        mixed = metadata.b12x_mixed
++        return bool(
++            mixed is not None
++            and self._b12x_prefill is not None
++            and self.gdn_decode_kernel == "b12x"
++            and getattr(mixed, "host_identity", False)
++            and 0 < mixed.host_non_spec_tokens <= num_tokens
++        )
++
++    def _forward_core_b12x_identity(
++        self,
++        *,
++        mixed_qkv: torch.Tensor,
++        b: torch.Tensor,
++        a: torch.Tensor,
++        output_gate: torch.Tensor,
++        core_attn_out: torch.Tensor,
++        metadata,
++        runner,
++        conv_state: torch.Tensor,
++        weights: torch.Tensor,
++    ) -> None:
++        """Eager batch with no verification rows: the non-spec worklist is the
++        identity, so read inputs in place and write the normed output directly
++        (no gathers, zero fill or scatter)."""
++        from vllm.third_party.flash_linear_attention.ops.layernorm_guard import (
++            layer_norm_fwd,
+         )
+ 
++        rows = mixed_qkv.shape[0]
++        live = metadata.host_non_spec_tokens
++        conv_out = torch.empty(
++            (rows, mixed_qkv.shape[1]), dtype=mixed_qkv.dtype, device=mixed_qkv.device
++        )
++        causal_conv1d_fn(
++            mixed_qkv.transpose(0, 1),
++            weights,
++            self.conv1d.bias,
++            activation=self.activation,
++            conv_states=conv_state,
++            has_initial_state=metadata.has_initial_state,
++            cache_indices=metadata.state_indices,
++            query_start_loc=metadata.query_start_loc,
++            metadata=metadata.convolution_metadata(rows),
++            out=conv_out.transpose(0, 1),
++        )
++        prefill_output = torch.empty_like(core_attn_out)
++        runner.run(
++            mixed_qkv=conv_out,
++            a=a.contiguous(),
++            b=b.contiguous(),
++            query_start_loc=metadata.query_start_loc,
++            state_indices=metadata.state_indices,
++            has_initial_state=metadata.has_initial_state,
++            live_counts=metadata.live_counts,
++            checkpoint=metadata.checkpoint,
++            output=prefill_output,
++            eps=self.layer_norm_epsilon,
++        )
++        heads, dim = core_attn_out.shape[-2], core_attn_out.shape[-1]
++        group = dim if self.norm.group_size is None else self.norm.group_size
++        weight = getattr(self, "_gdn_identity_norm_weight", None)
++        if weight is None or weight.numel() != heads * dim:
++            weight = self.norm.weight.contiguous().repeat(heads * dim // self.norm.weight.numel())
++            self._gdn_identity_norm_weight = weight
++        bias = self.norm.bias
++        if bias is not None:
++            bias = bias.contiguous().repeat(heads * dim // bias.numel())
++        gate = output_gate[:live]
++        gate_2d = gate.as_strided((live, heads * dim), (gate.stride(0), 1))
++        assert gate.stride(-1) == 1 and gate.stride(-2) == dim
++        layer_norm_fwd(
++            prefill_output[:live].reshape(live, heads * dim),
++            weight,
++            bias,
++            self.norm.eps,
++            z=gate_2d,
++            out=core_attn_out[:live].view(live, heads * dim),
++            group_size=group,
++            norm_before_gate=self.norm.norm_before_gate,
++            is_rms_norm=True,
++            activation=self.norm.activation,
++        )
++        if live < rows:
++            core_attn_out[live:].zero_()
++
+     def _forward_core_b12x_mixed(
+         self,
+         *,
+@@ -2982,6 +3079,24 @@
+             else self.kv_cache[0].transpose(-1, -2)
+         )
+         weights = self.conv1d.weight.view(self.conv1d.weight.size(0), -1)
++        if (
++            _GDN_IDENTITY_FASTPATH
++            and metadata.host_identity
++            and 0 < metadata.host_non_spec_tokens <= rows
++            and not torch.cuda.is_current_stream_capturing()
++        ):
++            self._forward_core_b12x_identity(
++                mixed_qkv=mixed_qkv,
++                b=b,
++                a=a,
++                output_gate=output_gate,
++                core_attn_out=core_attn_out,
++                metadata=metadata,
++                runner=runner,
++                conv_state=conv_state,
++                weights=weights,
++            )
++            return
+         non_spec_indices = metadata.token_indices[:rows]
+         packed = mixed_qkv.index_select(0, non_spec_indices)
+         convolved = causal_conv1d_fn(

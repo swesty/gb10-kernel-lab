@@ -1,0 +1,15 @@
+--- dynamic.orig.py	2026-11-18 21:37:00
++++ dynamic.stage.py	2026-11-18 21:37:01
+@@ -1546,6 +1546,12 @@
+         # 32%3!=0 causes pipeline phase mismatch. Round down to nearest divisor.
+         while self.ab_stage > 1 and 32 % self.ab_stage != 0:
+             self.ab_stage -= 1
++        # Experiment (gb10-kernel-lab): force the TMA stage count. The fit estimate above
++        # reserves ~18.6 KB fixed while the measured footprint implies ~12 KB, and the
++        # divisor rule assumes K = 4096 (32 k-tiles); Flash Next has K = 2560 (20).
++        _forced_stage = __import__("os").environ.get("B12X_MOE_AB_STAGE")
++        if _forced_stage and not self.is_w4a8:
++            self.ab_stage = int(_forced_stage)
+         self.w4a8_fc2_compute_width = 1
+         if self.is_w4a8:
+             # w4a8 repurposes the staging regions as fixed double buffers; a

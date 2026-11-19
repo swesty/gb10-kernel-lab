@@ -1,0 +1,10 @@
+=== nq-ab-1 14:11:38
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          4924.74   
+Median TTFT (ms):                        4938.40   
+real-text prefill 14573 tokens: 4.79 s
+real-text prefill 14569 tokens: 4.78 s
+real-text prefill 14572 tokens: 4.79 s
+decode c=4 real text: per-request [26.7, 27.2, 30.1, 27.0] tokens/s, mean TTFT 2.34 s, MTP acceptance 55.4% (2.22 accepted per step)
+decode c=1 real text: 46.3 tokens/s (TTFT 0.06 s), MTP acceptance 45.8%

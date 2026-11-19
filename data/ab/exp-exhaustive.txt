@@ -1,0 +1,6 @@
+=== exhaustive 01:33:55
+--- random 16K prefill x4
+Failed requests during benchmark run detected (capping to 10):
+Failed requests:                         4         
+Mean TTFT (ms):                          0.00      
+Median TTFT (ms):                        0.00      

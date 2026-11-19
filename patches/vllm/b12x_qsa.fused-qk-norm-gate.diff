@@ -1,0 +1,139 @@
+--- b12x_qsa.orig.py	2026-11-18 19:50:05
++++ b12x_qsa.fast.py	2026-11-18 19:50:33
+@@ -5,6 +5,7 @@
+ from __future__ import annotations
+ 
+ import math
++import os
+ from dataclasses import dataclass, replace
+ from typing import Any, ClassVar, cast
+ 
+@@ -168,6 +169,45 @@
+     return quant_config
+ 
+ 
++_QSA_FUSED_QK_NORM = os.environ.get("VLLM_QSA_FUSED_QK_NORM", "0") == "1"
++
++
++@triton.jit
++def _qsa_sigmoid_gate_kernel(out_ptr, gate_ptr, dst_ptr, out_stride, gate_stride, dst_stride,
++                             WIDTH: tl.constexpr, BLOCK: tl.constexpr):
++    # dst = bf16(out * bf16(sigmoid(gate))) -- same rounding as the eager
++    # ``output * torch.sigmoid(gate)`` pair, in one pass.
++    row = tl.program_id(0).to(tl.int64)
++    cols = tl.program_id(1) * BLOCK + tl.arange(0, BLOCK)
++    mask = cols < WIDTH
++    o = tl.load(out_ptr + row * out_stride + cols, mask=mask, other=0.0).to(tl.float32)
++    g = tl.load(gate_ptr + row * gate_stride + cols, mask=mask, other=0.0).to(tl.float32)
++    sig = tl.sigmoid(g).to(dst_ptr.dtype.element_ty).to(tl.float32)
++    tl.store(dst_ptr + row * dst_stride + cols, (o * sig).to(dst_ptr.dtype.element_ty), mask=mask)
++
++
++def _qsa_apply_gate(output: torch.Tensor, gate: torch.Tensor) -> torch.Tensor:
++    flat = output.flatten(-2)
++    if not (
++        _QSA_FUSED_QK_NORM
++        and flat.dim() == 2
++        and gate.dim() == 2
++        and flat.shape == gate.shape
++        and flat.stride(-1) == 1
++        and gate.stride(-1) == 1
++        and flat.dtype == gate.dtype
++        and flat.shape[0] > 0
++    ):
++        return flat * torch.sigmoid(gate)
++    rows, width = flat.shape
++    dst = torch.empty_like(flat, memory_format=torch.contiguous_format)
++    _qsa_sigmoid_gate_kernel[(rows, triton.cdiv(width, 1024))](
++        flat, gate, dst, flat.stride(0), gate.stride(0), dst.stride(0),
++        WIDTH=width, BLOCK=1024, num_warps=4,
++    )
++    return dst
++
++
+ @dataclass
+ class Qwen4ExpQSAMetadata(B12xPagedMetadata):
+     """Main-cache metadata plus persistent selector-state ownership."""
+@@ -1589,6 +1629,33 @@
+     ) -> None:
+         self._raw_interval_start_positions[slot] = anchor
+ 
++    def _fused_qk_norm_supported(self, q_gate, key, positions) -> bool:
++        ok = getattr(self, "_fused_qk_norm_static_ok", None)
++        if ok is None:
++            rope = self.rotary_emb
++            section = getattr(rope, "mrope_section", None)
++            ok = bool(
++                getattr(rope, "is_neox_style", False)
++                and getattr(rope, "dtype", None) in (torch.float16, torch.bfloat16)
++                and self.q_norm.variance_epsilon == self.k_norm.variance_epsilon
++                and (
++                    not section
++                    or (
++                        len(section) == 3
++                        and sum(section) == rope.rotary_dim // 2
++                        and getattr(rope, "mrope_interleaved", False)
++                    )
++                )
++            )
++            self._fused_qk_norm_static_ok = ok
++            if self.layer_name.endswith("layers.3.self_attn.attn") or not ok:
++                from vllm.logger import init_logger
++
++                init_logger(__name__).info(
++                    "QSA fused qk-norm/rope/gate: %s (%s)", ok, type(self.rotary_emb).__name__
++                )
++        return ok and q_gate.dtype in (torch.float16, torch.bfloat16)
++
+     def _project_qkv_gate(
+         self,
+         qkv: torch.Tensor,
+@@ -1597,6 +1664,30 @@
+         q_gate, key, value = qkv.split(
+             (self.q_size * 2, self.kv_size, self.kv_size), dim=-1
+         )
++        if _QSA_FUSED_QK_NORM and self._fused_qk_norm_supported(q_gate, key, positions):
++            from vllm.model_executor.layers.fused_qk_norm_rope import (
++                fused_qk_rmsnorm_rope_gate,
++            )
++
++            mrope_section = getattr(self.rotary_emb, "mrope_section", None)
++            if positions.ndim == 2 and not mrope_section:
++                positions = positions[0]
++            query, key, gate = fused_qk_rmsnorm_rope_gate(
++                q_gate,
++                key,
++                self.q_norm.weight,
++                self.k_norm.weight,
++                self.rotary_emb.cos_sin_cache,
++                positions,
++                self.q_norm.variance_epsilon,
++                self.num_heads,
++                self.num_projected_kv_heads,
++                self.head_dim,
++                self.rotary_emb.rotary_dim,
++                norm_beta=1.0,
++                mrope_section=mrope_section if positions.ndim == 2 else None,
++            )
++            return query, key, value, gate
+         q_gate = q_gate.unflatten(-1, (self.num_heads, self.head_dim * 2))
+         query, gate = q_gate.chunk(2, dim=-1)
+         query = self.q_norm(query).flatten(-2)
+@@ -2689,7 +2780,7 @@
+                 self._selected_positions,
+                 layer_name,
+             )
+-            gated = output.flatten(-2) * torch.sigmoid(gate)
++            gated = _qsa_apply_gate(output, gate)
+             return self.o_proj(gated)[0]
+         qkv, _ = self.qkv_proj(hidden_states)
+         query, key, value, gate = self._project_qkv_gate(qkv, positions)
+@@ -2722,7 +2813,7 @@
+                 output,
+                 layer_name,
+             )
+-        gated = output.flatten(-2) * torch.sigmoid(gate)
++        gated = _qsa_apply_gate(output, gate)
+         projected, _ = self.o_proj(gated)
+         return projected
+ 

@@ -1,0 +1,305 @@
+### top constants
+59:_THREADS = 128
+60:_WARPS = _THREADS // 32
+62:_LOCK = RLock()
+69:def _add(left: Float32, right: Float32) -> Float32:
+73:@dsl_user_op
+74:def _exp2_approx(value: Float32, *, loc=None, ip=None) -> Float32:
+90:@dsl_user_op
+91:def _pointer_as_int64(pointer, offset, *, loc=None, ip=None) -> Int64:
+96:@dsl_user_op
+97:def _cp_async_load_128b_zfill(
+122:class _SelectedPositionPagedForwardKernel:
+860:class _SparseGqaMergeKernel:
+976:class _CooperativeSparseGqaMergeKernel(_SparseGqaMergeKernel):
+1103:class _ShapeAdaptiveSparseGqaMergeKernel:
+1147:_MERGE_KERNEL = _ShapeAdaptiveSparseGqaMergeKernel
+1150:def _cache_key(
+1180:def _pointer(
+1192:def _fake_pointer(dtype: type[cutlass.Numeric]) -> cute.Pointer:
+1201:def _compile(
+1316:def precompile_sparse_gqa_split(
+1342:def launch_sparse_gqa_split(
+1426:def launch_selected_paged_gqa_direct(
+1513:def launch_sparse_gqa_merge(
+1593:def clear_caches() -> None:
+### launcher functions
+        _compile(
+            query=query,
+            key_cache=key_cache,
+            value_cache=value_cache,
+            request_ids=request_ids,
+            direct_output=False,
+            return_lse=True,
+            kv_warps=2,
+            selection_width=selection_width,
+        )
+
+
+def launch_sparse_gqa_split(
+    *,
+    query: torch.Tensor,
+    key_cache: torch.Tensor,
+    value_cache: torch.Tensor,
+    k_descale: torch.Tensor | None,
+    v_descale: torch.Tensor | None,
+    block_table: torch.Tensor,
+    request_ids: torch.Tensor,
+    selected_positions: torch.Tensor,
+    query_positions: torch.Tensor,
+    partial_output: torch.Tensor,
+    partial_lse: torch.Tensor,
+    softmax_scale: float,
+    splits: int,
+) -> None:
+    """Launch the specialized split core without allocation or fallback."""
+    key = _cache_key(
+        query,
+        key_cache,
+        value_cache,
+        request_ids,
+        direct_output=False,
+        return_lse=True,
+        kv_warps=2,
+        selection_width=int(selected_positions.shape[1]),
+    )
+    with torch.cuda.device(query.device):
+        capturing = torch.cuda.is_current_stream_capturing()
+        with _LOCK:
+            raw = _KERNEL_CACHE.get(key)
+            warmed = raw is not None and _WARMED.get(key) is raw
+        if capturing and (raw is None or not warmed):
+            raise RuntimeError(
+                "CuTe sparse GQA must be compiled and warm-run before CUDA graph "
+                "capture"
+            )
+        if raw is None:
+            key, raw = _compile(
+                query=query,
+                key_cache=key_cache,
+                value_cache=value_cache,
+                request_ids=request_ids,
+                direct_output=False,
+                return_lse=True,
+                kv_warps=2,
+                selection_width=int(selected_positions.shape[1]),
+            )
+        request_id_type = Int32 if request_ids.dtype == torch.int32 else Int64
+        kv_type = Float8E4M3FN if key_cache.dtype == torch.float8_e4m3fn else BFloat16
+        run_compiled(
+            raw,
+            (
+                _pointer(query, BFloat16),
+                _pointer(key_cache, kv_type),
+                _pointer(value_cache, kv_type),
+                _pointer(k_descale, Float32)
+                if k_descale is not None
+                else _fake_pointer(Float32),
+                _pointer(v_descale, Float32)
+                if v_descale is not None
+                else _fake_pointer(Float32),
+                _pointer(block_table, Int32),
+                _pointer(request_ids, request_id_type),
+                _pointer(selected_positions, Int32),
+                _pointer(query_positions, Int64),
+                _pointer(partial_output, Float32),
+                _pointer(partial_lse, Float32),
+                _fake_pointer(BFloat16),
+                int(key_cache.shape[0]),
+                int(block_table.shape[0]),
+                int(block_table.shape[1]),
+                float(softmax_scale),
+                int(query.shape[0]),
+                int(splits),
+                current_cuda_stream(),
+            ),
+        )
+    if not capturing:
+        with _LOCK:
+            if _KERNEL_CACHE.get(key) is raw:
+                _WARMED[key] = raw
+
+
+def launch_selected_paged_gqa_direct(
+    *,
+    query: torch.Tensor,
+    key_cache: torch.Tensor,
+    value_cache: torch.Tensor,
+    k_descale: torch.Tensor | None,
+    v_descale: torch.Tensor | None,
+    block_table: torch.Tensor,
+    request_ids: torch.Tensor,
+    selected_positions: torch.Tensor,
+    query_positions: torch.Tensor,
+    output: torch.Tensor,
+    output_lse: torch.Tensor | None,
+    softmax_scale: float,
+    kv_warps: int,
+) -> None:
+    """Launch direct selected-position paged attention without split scratch."""
+    kv_warps = int(kv_warps)
+    key = _cache_key(
+        query,
+        key_cache,
+        value_cache,
+        request_ids,
+        direct_output=True,
+        return_lse=output_lse is not None,
+        kv_warps=kv_warps,
+        selection_width=int(selected_positions.shape[1]),
+    )
+    with torch.cuda.device(query.device):
+        capturing = torch.cuda.is_current_stream_capturing()
+        with _LOCK:
+            raw = _KERNEL_CACHE.get(key)
+            warmed = raw is not None and _WARMED.get(key) is raw
+        if capturing and (raw is None or not warmed):
+            raise RuntimeError(
+                "selected-position paged attention must be compiled and warm-run "
+                "before CUDA graph capture"
+            )
+        if raw is None:
+            key, raw = _compile(
+                query=query,
+                key_cache=key_cache,
+                value_cache=value_cache,
+                request_ids=request_ids,
+                direct_output=True,
+                return_lse=output_lse is not None,
+                kv_warps=kv_warps,
+                selection_width=int(selected_positions.shape[1]),
+            )
+        request_id_type = Int32 if request_ids.dtype == torch.int32 else Int64
+        kv_type = Float8E4M3FN if key_cache.dtype == torch.float8_e4m3fn else BFloat16
+        run_compiled(
+            raw,
+            (
+                _pointer(query, BFloat16),
+                _pointer(key_cache, kv_type),
+                _pointer(value_cache, kv_type),
+                _pointer(k_descale, Float32)
+                if k_descale is not None
+                else _fake_pointer(Float32),
+                _pointer(v_descale, Float32)
+                if v_descale is not None
+                else _fake_pointer(Float32),
+                _pointer(block_table, Int32),
+                _pointer(request_ids, request_id_type),
+                _pointer(selected_positions, Int32),
+                _pointer(query_positions, Int64),
+                _fake_pointer(Float32),
+                _pointer(output_lse, Float32)
+                if output_lse is not None
+                else _fake_pointer(Float32),
+                _pointer(output, BFloat16),
+                int(key_cache.shape[0]),
+                int(block_table.shape[0]),
+                int(block_table.shape[1]),
+                float(softmax_scale),
+                int(query.shape[0]),
+                1,
+                current_cuda_stream(),
+            ),
+        )
+    if not capturing:
+        with _LOCK:
+            if _KERNEL_CACHE.get(key) is raw:
+                _WARMED[key] = raw
+
+
+def launch_sparse_gqa_merge(
+    *,
+    partial_output: torch.Tensor,
+    partial_lse: torch.Tensor,
+    output: torch.Tensor,
+    output_lse: torch.Tensor | None,
+    rows: int,
+    splits: int,
+) -> None:
+    """Merge the Qwen split layout without allocation or fallback."""
+    device_index = partial_output.device.index
+    if device_index is None:
+        device_index = torch.cuda.current_device()
+    q_heads = int(partial_output.shape[2])
+    return_lse = output_lse is not None
+    key = (
+        int(device_index),
+        q_heads,
+        _HEAD_DIM,
+        _MERGE_KERNEL.__name__,
+        return_lse,
+    )
+    with torch.cuda.device(device_index):
+        capturing = torch.cuda.is_current_stream_capturing()
+        with _LOCK:
+            raw = _MERGE_CACHE.get(key)
+            warmed = raw is not None and _MERGE_WARMED.get(key) is raw
+        if capturing and (raw is None or not warmed):
+            raise RuntimeError(
+                "CuTe sparse GQA merge must be compiled and warm-run before "
+                "CUDA graph capture"
+            )
+        if raw is None:
+            kernel = _MERGE_KERNEL(q_heads=q_heads, return_lse=return_lse)
+            raise_if_kernel_resolution_frozen(
+                "cute.compile",
+                target=kernel,
+                cache_key=key,
+            )
+            raw = b12x_compile(
+                kernel,
+                _fake_pointer(Float32),
+                _fake_pointer(Float32),
+                _fake_pointer(BFloat16),
+                _fake_pointer(Float32),
+                Int32(1),
+                Int32(1),
+                current_cuda_stream(),
+                compile_spec=KernelCompileSpec.from_key(
+                    "attention.qsa.sparse_gqa_merge",
+                    11,
+                    key[1:],
+                ),
+            )
+            with _LOCK:
+                _MERGE_CACHE[key] = raw
+        if compile_only_launches_enabled():
+            for program in program_keys(raw):
+                record_program(program)
+            return raw
+        run_compiled(
+            raw,
+            (
+                _pointer(partial_output, Float32),
+                _pointer(partial_lse, Float32),
+                _pointer(output, BFloat16),
+                _pointer(output_lse, Float32)
+                if output_lse is not None
+                else _fake_pointer(Float32),
+                int(rows),
+                int(splits),
+                current_cuda_stream(),
+            ),
+        )
+    if not capturing:
+        with _LOCK:
+            if _MERGE_CACHE.get(key) is raw:
+                _MERGE_WARMED[key] = raw
+
+
+def clear_caches() -> None:
+    """Clear process-local compiled and warm-launch state for focused tests."""
+    with _LOCK:
+        _KERNEL_CACHE.clear()
+        _WARMED.clear()
+        _MERGE_CACHE.clear()
+        _MERGE_WARMED.clear()
+
+
+__all__ = [
+    "clear_caches",
+    "launch_selected_paged_gqa_direct",
+    "launch_sparse_gqa_split",
+    "launch_sparse_gqa_merge",
+    "precompile_sparse_gqa_split",
+]

@@ -1,0 +1,182 @@
+[
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "sched": "rm=1,sw=8",
+  "default": true,
+  "compile_s": 0.0,
+  "err_vs_qref": 0.0016595629276707768,
+  "err_vs_live": 0.0,
+  "med_us": 159.5,
+  "min_us": 156.4,
+  "max_us": 160.5,
+  "per_placement_us": [
+   160,
+   156,
+   159,
+   156,
+   160,
+   160
+  ],
+  "kern_cold_p0_us": 156.9,
+  "tflops_med": 84.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   64,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.0,
+  "err_vs_qref": 0.0016595629276707768,
+  "err_vs_live": 0.0,
+  "med_us": 159.5,
+  "min_us": 157.3,
+  "max_us": 160.8,
+  "per_placement_us": [
+   159,
+   157,
+   161,
+   157,
+   159,
+   159
+  ],
+  "kern_cold_p0_us": 156.6,
+  "tflops_med": 84.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.0016595629276707768,
+  "err_vs_live": 0.0,
+  "med_us": 187.2,
+  "min_us": 181.0,
+  "max_us": 192.2,
+  "per_placement_us": [
+   188,
+   184,
+   183,
+   187,
+   192,
+   181
+  ],
+  "kern_cold_p0_us": 199.4,
+  "tflops_med": 71.7
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 64,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.0016595629276707768,
+  "err_vs_live": 0.0,
+  "med_us": 158.4,
+  "min_us": 156.4,
+  "max_us": 159.5,
+  "per_placement_us": [
+   158,
+   156,
+   158,
+   159,
+   158,
+   159
+  ],
+  "kern_cold_p0_us": 153.0,
+  "tflops_med": 84.7
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   128,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.0016595629276707768,
+  "err_vs_live": 0.0,
+  "med_us": 143.0,
+  "min_us": 140.0,
+  "max_us": 144.1,
+  "per_placement_us": [
+   144,
+   140,
+   143,
+   143,
+   143,
+   143
+  ],
+  "kern_cold_p0_us": 141.9,
+  "tflops_med": 93.9
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   64,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.0016595629276707768,
+  "err_vs_live": 0.0,
+  "med_us": 152.6,
+  "min_us": 150.2,
+  "max_us": 155.5,
+  "per_placement_us": [
+   153,
+   150,
+   151,
+   153,
+   151,
+   156
+  ],
+  "kern_cold_p0_us": 151.5,
+  "tflops_med": 88.0
+ }
+]

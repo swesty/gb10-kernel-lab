@@ -1,0 +1,10 @@
+=== v2-small 01:37:15
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          5800.24   
+Median TTFT (ms):                        5813.40   
+real-text prefill 14571 tokens: 5.43 s
+real-text prefill 14567 tokens: 5.44 s
+real-text prefill 14569 tokens: 5.43 s
+decode c=4 real text: per-request [26.6, 26.6, 30.4, 28.6] tokens/s, mean TTFT 2.48 s, MTP acceptance 54.2% (2.17 accepted per step)
+decode c=1 real text: 53.8 tokens/s (TTFT 0.05 s), MTP acceptance 57.8%

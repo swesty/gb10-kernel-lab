@@ -1,0 +1,9 @@
+# Large binaries published as GitHub release assets instead (over or near the 100 MB file limit)
+data/qsa-dump/*.pt
+data/ncu/side-engine/main.ncu-rep
+# Build output and regenerable exports
+dist/
+*.sqlite
+__pycache__/
+*.pyc
+.DS_Store

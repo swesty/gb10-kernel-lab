@@ -1,0 +1,25 @@
+# MemAvailable 19.4 GiB  torch 2.13.0+cu130  cache=None disk=0
+# SCHEDULER PATCH ACTIVE: {'raster_along_m': False, 'swizzle': 8}
+gemm.blockscaled_precision: BlockscaledQuery (recipe=mxfp8, num_tokens=4096, in_features=2560, padded_in_features=2560, out_features=13312, activation_mode=auto, global_scale_kind=none, output_mode=functional, ...) was not prepared before its first use; preparing its default configuration. Repeated matching declarations are logged at DEBUG.
+/tmp/gemmexp/dense_gemm_harness.py:747: DeprecationWarning: Migrated to examples/CuTeDSL/helpers/static_persistent_tile_scheduler.py (BSD-3). The wheel copy will be removed in a future release.
+  params = utils.PersistentTileSchedulerParams(num_ctas_mnl, (1, 1, 1), swizzle_size=swz,
+USDT:2026-11-19 12:25:58 329263:329263 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:58 329263:329263 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "attn_qkv", "M": 4096, "N": 13312, "K": 2560, "sched": "rm=0,sw=8", "default": true, "compile_s": 0.0, "err_vs_qref": 0.001660180976614356, "err_vs_live": 0.0, "med_us": 2044.6, "min_us": 2001.6, "max_us": 2074.3, "per_placement_us": [2063, 2036, 2002, 2045, 2020, 2074], "kern_cold_p0_us": 2216.5, "tflops_med": 136.5}
+USDT:2026-11-19 12:25:58 329263:329263 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:58 329263:329263 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "attn_qkv", "M": 4096, "N": 13312, "K": 2560, "sched": "rm=0,sw=8", "tile": [64, 128], "tile_k": 128, "swap_ab": false, "large_m_unroll": true, "compile_s": 0.0, "err_vs_qref": 0.001660180976614356, "err_vs_live": 0.0, "med_us": 2041.5, "min_us": 1996.5, "max_us": 2066.1, "per_placement_us": [2052, 2032, 1996, 2042, 2027, 2066], "kern_cold_p0_us": 2045.3, "tflops_med": 136.7}
+/tmp/gemmexp/dense_gemm_harness.py:747: DeprecationWarning: Migrated to examples/CuTeDSL/helpers/static_persistent_tile_scheduler.py (BSD-3). The wheel copy will be removed in a future release.
+  params = utils.PersistentTileSchedulerParams(num_ctas_mnl, (1, 1, 1), swizzle_size=swz,
+USDT:2026-11-19 12:25:59 329263:329263 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:59 329263:329263 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "attn_qkv", "M": 4096, "N": 13312, "K": 2560, "sched": "rm=0,sw=8", "tile": [128, 128], "tile_k": 128, "swap_ab": false, "large_m_unroll": false, "compile_s": 0.4, "err_vs_qref": 0.001660180976614356, "err_vs_live": 0.0, "med_us": 2292.4, "min_us": 2273.0, "max_us": 2416.2, "per_placement_us": [2292, 2299, 2273, 2282, 2291, 2416], "kern_cold_p0_us": 2307.9, "tflops_med": 121.8}
+USDT:2026-11-19 12:25:59 329263:329263 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:59 329263:329263 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "attn_qkv", "M": 4096, "N": 13312, "K": 2560, "sched": "rm=0,sw=8", "tile": [128, 128], "tile_k": 64, "swap_ab": false, "large_m_unroll": false, "compile_s": 0.3, "err_vs_qref": 0.001660180976614356, "err_vs_live": 0.0, "med_us": 1769.2, "min_us": 1761.0, "max_us": 1782.6, "per_placement_us": [1763, 1766, 1761, 1769, 1783, 1782], "kern_cold_p0_us": 1759.9, "tflops_med": 157.8}
+USDT:2026-11-19 12:25:59 329263:329263 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:59 329263:329263 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "attn_qkv", "M": 4096, "N": 13312, "K": 2560, "sched": "rm=0,sw=8", "tile": [128, 64], "tile_k": 128, "swap_ab": false, "large_m_unroll": true, "compile_s": 0.3, "err_vs_qref": 0.001660180976614356, "err_vs_live": 0.0, "med_us": 1795.8, "min_us": 1785.5, "max_us": 1870.5, "per_placement_us": [1786, 1792, 1795, 1801, 1796, 1871], "kern_cold_p0_us": 1791.3, "tflops_med": 155.5}
+USDT:2026-11-19 12:26:00 329263:329263 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:26:00 329263:329263 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "attn_qkv", "M": 4096, "N": 13312, "K": 2560, "sched": "rm=0,sw=8", "tile": [64, 64], "tile_k": 128, "swap_ab": false, "large_m_unroll": true, "compile_s": 0.3, "err_vs_qref": 0.001660180976614356, "err_vs_live": 0.0, "med_us": 2311.9, "min_us": 2302.7, "max_us": 2449.2, "per_placement_us": [2310, 2449, 2325, 2312, 2303, 2308], "kern_cold_p0_us": 2307.3, "tflops_med": 120.8}

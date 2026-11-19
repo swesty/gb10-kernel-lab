@@ -1,0 +1,10 @@
+=== gdn-fast 00:18:07
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          6121.51   
+Median TTFT (ms):                        6139.45   
+real-text prefill 14570 tokens: 5.73 s
+real-text prefill 14569 tokens: 5.71 s
+real-text prefill 14568 tokens: 5.73 s
+decode c=4 real text: per-request [26.8, 26.4, 30.4, 26.0] tokens/s, mean TTFT 2.60 s, MTP acceptance 52.3% (2.09 accepted per step)
+decode c=1 real text: 50.6 tokens/s (TTFT 0.06 s), MTP acceptance 52.7%

@@ -1,0 +1,151 @@
+[
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "sched": "rm=1,sw=8",
+  "default": true,
+  "compile_s": 0.0,
+  "err_vs_qref": 0.0016578200738877058,
+  "err_vs_live": 0.0,
+  "med_us": 1047.3,
+  "min_us": 1035.0,
+  "max_us": 1056.5,
+  "per_placement_us": [
+   1035,
+   1056,
+   1042,
+   1047,
+   1036,
+   1050
+  ],
+  "kern_cold_p0_us": 1037.8,
+  "tflops_med": 123.0
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   64,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.0,
+  "err_vs_qref": 0.0016578200738877058,
+  "err_vs_live": 0.0,
+  "med_us": 1044.2,
+  "min_us": 1037.0,
+  "max_us": 1064.7,
+  "per_placement_us": [
+   1043,
+   1065,
+   1042,
+   1044,
+   1037,
+   1046
+  ],
+  "kern_cold_p0_us": 1179.9,
+  "tflops_med": 123.4
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.0016578200738877058,
+  "err_vs_live": 0.0,
+  "med_us": 1281.8,
+  "min_us": 1271.5,
+  "max_us": 1286.9,
+  "per_placement_us": [
+   1271,
+   1274,
+   1282,
+   1286,
+   1287,
+   1275
+  ],
+  "kern_cold_p0_us": 1261.8,
+  "tflops_med": 100.5
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 64,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.0016578200738877058,
+  "err_vs_live": 0.0,
+  "med_us": 932.6,
+  "min_us": 903.9,
+  "max_us": 940.8,
+  "per_placement_us": [
+   910,
+   904,
+   923,
+   941,
+   937,
+   933
+  ],
+  "kern_cold_p0_us": 914.2,
+  "tflops_med": 138.2
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "sched": "rm=1,sw=8",
+  "tile": [
+   128,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.0016578200738877058,
+  "err_vs_live": 0.0,
+  "med_us": 932.6,
+  "min_us": 917.2,
+  "max_us": 1106.7,
+  "per_placement_us": [
+   917,
+   922,
+   921,
+   933,
+   934,
+   1107
+  ],
+  "kern_cold_p0_us": 912.3,
+  "tflops_med": 138.2
+ }
+]

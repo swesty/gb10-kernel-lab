@@ -1,0 +1,10 @@
+=== B-patched
+greedy output: "The documentation outlines Python's `collections` module, which provides specialized data structures like `ChainMap`, `Counter`, and `namedtuple` for efficient data management and counting. It also details the `itertools` and `functools` modules, offering tools for creating efficient iterators, performing functional programming tasks, and implementing caching or partial function application. Finally, it covers the `asyncio` module, which supplies the infrastructure for asynchronous programming, including event loops, protocols,"
+real-text prefill 14569 tokens: 6.25 s
+real-text prefill 14569 tokens: 6.26 s
+real-text prefill 14567 tokens: 6.26 s
+decode c=4 real text: per-request [8.6, 8.7, 8.7, 8.9] chunks/s, mean TTFT 2.71 s, MTP acceptance 52.7% (2.11 accepted per step)
+real-text prefill 14567 tokens: 6.27 s
+real-text prefill 14572 tokens: 6.26 s
+real-text prefill 14568 tokens: 6.28 s
+decode c=4 real text: per-request [8.6, 8.8, 8.6, 8.9] chunks/s, mean TTFT 0.24 s, MTP acceptance 56.0% (2.24 accepted per step)

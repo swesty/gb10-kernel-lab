@@ -1,0 +1,9 @@
+=== moe-persistent-grid 23:14:28
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          6802.78   
+Median TTFT (ms):                        6818.25   
+real-text prefill 14569 tokens: 6.31 s
+real-text prefill 14573 tokens: 6.33 s
+real-text prefill 14566 tokens: 6.33 s
+decode c=4 real text: per-request [8.6, 8.8, 8.6, 8.9] chunks/s, mean TTFT 2.76 s, MTP acceptance 49.8% (1.99 accepted per step)

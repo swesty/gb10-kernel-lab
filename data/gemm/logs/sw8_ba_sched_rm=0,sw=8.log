@@ -1,0 +1,25 @@
+# MemAvailable 19.4 GiB  torch 2.13.0+cu130  cache=None disk=0
+# SCHEDULER PATCH ACTIVE: {'raster_along_m': False, 'swizzle': 8}
+gemm.blockscaled_precision: BlockscaledQuery (recipe=mxfp8, num_tokens=4096, in_features=2560, padded_in_features=2560, out_features=96, activation_mode=auto, global_scale_kind=none, output_mode=functional, ...) was not prepared before its first use; preparing its default configuration. Repeated matching declarations are logged at DEBUG.
+/tmp/gemmexp/dense_gemm_harness.py:747: DeprecationWarning: Migrated to examples/CuTeDSL/helpers/static_persistent_tile_scheduler.py (BSD-3). The wheel copy will be removed in a future release.
+  params = utils.PersistentTileSchedulerParams(num_ctas_mnl, (1, 1, 1), swizzle_size=swz,
+USDT:2026-11-19 12:25:53 329232:329232 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:53 329232:329232 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "ba", "M": 4096, "N": 96, "K": 2560, "sched": "rm=0,sw=8", "default": true, "compile_s": 0.0, "err_vs_qref": 0.0016620148671790957, "err_vs_live": 0.0, "med_us": 101.1, "min_us": 99.9, "max_us": 102.1, "per_placement_us": [100, 101, 100, 100, 102, 101], "kern_cold_p0_us": 97.6, "tflops_med": 19.9}
+USDT:2026-11-19 12:25:53 329232:329232 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:53 329232:329232 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "ba", "M": 4096, "N": 96, "K": 2560, "sched": "rm=0,sw=8", "tile": [64, 128], "tile_k": 128, "swap_ab": false, "large_m_unroll": true, "compile_s": 0.0, "err_vs_qref": 0.0016620148671790957, "err_vs_live": 0.0, "med_us": 101.1, "min_us": 98.0, "max_us": 103.1, "per_placement_us": [100, 102, 101, 101, 103, 98], "kern_cold_p0_us": 96.7, "tflops_med": 19.9}
+/tmp/gemmexp/dense_gemm_harness.py:747: DeprecationWarning: Migrated to examples/CuTeDSL/helpers/static_persistent_tile_scheduler.py (BSD-3). The wheel copy will be removed in a future release.
+  params = utils.PersistentTileSchedulerParams(num_ctas_mnl, (1, 1, 1), swizzle_size=swz,
+USDT:2026-11-19 12:25:54 329232:329232 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:54 329232:329232 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "ba", "M": 4096, "N": 96, "K": 2560, "sched": "rm=0,sw=8", "tile": [128, 128], "tile_k": 128, "swap_ab": false, "large_m_unroll": false, "compile_s": 0.4, "err_vs_qref": 0.0016620148671790957, "err_vs_live": 0.0, "med_us": 102.1, "min_us": 101.1, "max_us": 111.4, "per_placement_us": [106, 111, 101, 102, 102, 102], "kern_cold_p0_us": 104.2, "tflops_med": 19.7}
+USDT:2026-11-19 12:25:54 329232:329232 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:54 329232:329232 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "ba", "M": 4096, "N": 96, "K": 2560, "sched": "rm=0,sw=8", "tile": [128, 128], "tile_k": 64, "swap_ab": false, "large_m_unroll": false, "compile_s": 0.3, "err_vs_qref": 0.0016620148671790957, "err_vs_live": 0.0, "med_us": 113.3, "min_us": 108.2, "max_us": 113.4, "per_placement_us": [110, 113, 110, 108, 113, 113], "kern_cold_p0_us": 107.4, "tflops_med": 17.8}
+USDT:2026-11-19 12:25:54 329232:329232 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:54 329232:329232 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "ba", "M": 4096, "N": 96, "K": 2560, "sched": "rm=0,sw=8", "tile": [128, 64], "tile_k": 128, "swap_ab": false, "large_m_unroll": true, "compile_s": 0.3, "err_vs_qref": 0.0016620148671790957, "err_vs_live": 0.0, "med_us": 107.2, "min_us": 105.2, "max_us": 109.2, "per_placement_us": [105, 108, 105, 107, 109, 106], "kern_cold_p0_us": 104.1, "tflops_med": 18.8}
+USDT:2026-11-19 12:25:54 329232:329232 SyncActivityProfilerHandler.cpp:52] profiler_start
+USDT:2026-11-19 12:25:54 329232:329232 SyncActivityProfilerHandler.cpp:59] profiler_stop
+{"recipe": "mxfp8", "shape": "ba", "M": 4096, "N": 96, "K": 2560, "sched": "rm=0,sw=8", "tile": [64, 64], "tile_k": 128, "swap_ab": false, "large_m_unroll": true, "compile_s": 0.0, "err_vs_qref": 0.0016620148671790957, "err_vs_live": 0.0, "med_us": 105.2, "min_us": 103.1, "max_us": 106.1, "per_placement_us": [104, 106, 103, 105, 104, 105], "kern_cold_p0_us": 101.2, "tflops_med": 19.1}

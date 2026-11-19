@@ -1,0 +1,314 @@
+[
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "flops": 343597383680.0,
+  "bytes_floor": 188284928,
+  "floor_bytes_us": 836.8219022222222,
+  "floor_peak_us": 1379.9091714056226,
+  "default_lowering": {
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "large_m_unroll": true,
+   "single_tile_per_cta": false,
+   "sm_count": 48,
+   "expected_m": 4096,
+   "sfb_k_reuse": false
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "workspace_form": "provided",
+   "mode": "quantized",
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "lowering_expected_m": 4096
+  },
+  "live_hot_us_events": 2390.518379211426,
+  "live_cold_us_events": 2319.0720081329346,
+  "live_kernels_cold": {
+   "_quantize": 168.6710000000021,
+   "DenseGemmKernel": 2165.585
+  },
+  "live_kernels_hot": {
+   "_quantize": 139.8090000000011,
+   "DenseGemmKernel": 2150.380000000001
+  },
+  "err_live_vs_qref": 0.0016602248651906848,
+  "err_live_vs_bf16ref": 0.02670130506157875,
+  "live_gemm_cold_tflops": 158.66261711269703,
+  "live_gemm_cold_pct_peak8": 63.719926551283955
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "flops": 2013265920.0,
+  "bytes_floor": 11853312,
+  "floor_bytes_us": 52.68138666666667,
+  "floor_peak_us": 8.085405301204819,
+  "default_lowering": {
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "large_m_unroll": true,
+   "single_tile_per_cta": false,
+   "sm_count": 48,
+   "expected_m": 4096,
+   "sfb_k_reuse": false
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "workspace_form": "provided",
+   "mode": "quantized",
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "lowering_expected_m": 4096
+  },
+  "live_hot_us_events": 164.10880088806152,
+  "live_cold_us_events": 195.2960044145584,
+  "live_kernels_cold": {
+   "_quantize": 165.15099999999984,
+   "DenseGemmKernel": 25.56800000000021
+  },
+  "live_kernels_hot": {
+   "_quantize": 132.33799999999997,
+   "DenseGemmKernel": 25.853000000000065
+  },
+  "err_live_vs_qref": 0.0016620148671790957,
+  "err_live_vs_bf16ref": 0.02669610269367695,
+  "live_gemm_cold_tflops": 78.74162703379159,
+  "live_gemm_cold_pct_peak8": 31.623143387064896
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "flops": 128849018880.0,
+  "bytes_floor": 63143936,
+  "floor_bytes_us": 280.63971555555554,
+  "floor_peak_us": 517.4659392771084,
+  "default_lowering": {
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "large_m_unroll": true,
+   "single_tile_per_cta": false,
+   "sm_count": 48,
+   "expected_m": 4096,
+   "sfb_k_reuse": false
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "workspace_form": "provided",
+   "mode": "quantized",
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "lowering_expected_m": 4096
+  },
+  "live_hot_us_events": 1700.9471893310547,
+  "live_cold_us_events": 1698.815941810608,
+  "live_kernels_cold": {
+   "_quantize": 375.3230000000003,
+   "DenseGemmKernel": 1311.8900000000012
+  },
+  "live_kernels_hot": {
+   "_quantize": 319.5540000000001,
+   "DenseGemmKernel": 1313.96
+  },
+  "err_live_vs_qref": 0.0016578200738877058,
+  "err_live_vs_bf16ref": 0.026698602363467216,
+  "live_gemm_cold_tflops": 98.21632825922896,
+  "live_gemm_cold_pct_peak8": 39.44430853784296
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "flops": 26843545600.0,
+  "bytes_floor": 24678400,
+  "floor_bytes_us": 109.68177777777778,
+  "floor_peak_us": 107.80540401606426,
+  "default_lowering": {
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "large_m_unroll": true,
+   "single_tile_per_cta": false,
+   "sm_count": 48,
+   "expected_m": 4096,
+   "sfb_k_reuse": false
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "workspace_form": "provided",
+   "mode": "quantized",
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "lowering_expected_m": 4096
+  },
+  "live_hot_us_events": 318.5856103897095,
+  "live_cold_us_events": 349.11999106407166,
+  "live_kernels_cold": {
+   "_quantize": 166.52400000000011,
+   "DenseGemmKernel": 179.96299999999974
+  },
+  "live_kernels_hot": {
+   "_quantize": 132.95299999999997,
+   "DenseGemmKernel": 177.90999999999985
+  },
+  "err_live_vs_qref": 0.001661126152612269,
+  "err_live_vs_bf16ref": 0.02670709788799286,
+  "live_gemm_cold_tflops": 149.1614698576932,
+  "live_gemm_cold_pct_peak8": 59.90420476212578
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "flops": 13421772800.0,
+  "bytes_floor": 25364480,
+  "floor_bytes_us": 112.73102222222222,
+  "floor_peak_us": 53.90270200803213,
+  "default_lowering": {
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "large_m_unroll": true,
+   "single_tile_per_cta": false,
+   "sm_count": 48,
+   "expected_m": 4096,
+   "sfb_k_reuse": false
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "workspace_form": "provided",
+   "mode": "quantized",
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "lowering_expected_m": 4096
+  },
+  "live_hot_us_events": 146.83200120925903,
+  "live_cold_us_events": 166.62399470806122,
+  "live_kernels_cold": {
+   "_quantize": 50.84699999999998,
+   "DenseGemmKernel": 114.14100000000008
+  },
+  "live_kernels_hot": {
+   "_quantize": 27.388999999999896,
+   "DenseGemmKernel": 113.61900000000014
+  },
+  "err_live_vs_qref": 0.0016595629276707768,
+  "err_live_vs_bf16ref": 0.026706019416451454,
+  "live_gemm_cold_tflops": 117.58940958989312,
+  "live_gemm_cold_pct_peak8": 47.22466248590086
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "attn_qkv",
+  "M": 4096,
+  "N": 13312,
+  "K": 2560,
+  "flops": 279172874240.0,
+  "bytes_floor": 155009024,
+  "floor_bytes_us": 688.9289955555555,
+  "floor_peak_us": 1121.1762017670683,
+  "default_lowering": {
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "large_m_unroll": true,
+   "single_tile_per_cta": false,
+   "sm_count": 48,
+   "expected_m": 4096,
+   "sfb_k_reuse": false
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "workspace_form": "provided",
+   "mode": "quantized",
+   "tile": [
+    64,
+    128
+   ],
+   "tile_k": 128,
+   "lowering_expected_m": 4096
+  },
+  "live_hot_us_events": 1956.6160202026367,
+  "live_cold_us_events": 1916.640043258667,
+  "live_kernels_cold": {
+   "_quantize": 164.89599999999973,
+   "DenseGemmKernel": 1747.7150000000001
+  },
+  "live_kernels_hot": {
+   "_quantize": 134.6219999999994,
+   "DenseGemmKernel": 1746.7299999999996
+  },
+  "err_live_vs_qref": 0.001660180976614356,
+  "err_live_vs_bf16ref": 0.026700980961322784,
+  "live_gemm_cold_tflops": 159.73592618933864,
+  "live_gemm_cold_pct_peak8": 64.15097437322837
+ }
+]

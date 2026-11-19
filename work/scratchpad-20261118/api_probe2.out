@@ -1,0 +1,277 @@
+### imports/constants
+10:from __future__ import annotations
+12:from collections.abc import Callable
+13:from threading import RLock
+15:import cuda.bindings.driver as cuda
+16:import cutlass
+17:import cutlass.cute as cute
+18:import cutlass.utils.hopper_helpers as sm90_utils_basic
+19:import torch
+20:from cutlass import (
+29:from cutlass._mlir.dialects import llvm
+30:from cutlass.cute.nvgpu import warp, warpgroup
+31:from cutlass.cutlass_dsl import T, dsl_user_op
+32:from cutlass.utils import LayoutEnum
+34:from b12x.attention._shared.contiguous import layout_utils
+35:from b12x.attention._shared.contiguous.forward import (
+38:from b12x.attention._shared.contiguous.softmax import Softmax
+39:from b12x.attention._shared.cute.ops import fmax
+40:from b12x._lib.compiler import KernelCompileSpec
+41:from b12x._lib.compiler import compile as b12x_compile
+42:from b12x._lib.compiler import run_compiled
+43:from b12x._lib.compile_plan import compile_only_launches_enabled, program_keys, record_program
+44:from b12x._lib.intrinsics import (
+51:from b12x._lib.runtime_control import raise_if_kernel_resolution_frozen
+52:from b12x._lib.utils import current_cuda_stream, make_ptr
+54:from ._selected_forward_config import HEAD_DIM as _HEAD_DIM
+55:from ._selected_forward_config import MAX_SPLITS as _NUM_SPLITS
+56:from ._selected_forward_config import SELECTION_WIDTH as _SELECTION_WIDTH
+### _cache_key/_compile
+def _cache_key(
+    query: torch.Tensor,
+    key_cache: torch.Tensor,
+    value_cache: torch.Tensor,
+    request_ids: torch.Tensor,
+    *,
+    direct_output: bool,
+    return_lse: bool,
+    kv_warps: int,
+    selection_width: int = _SELECTION_WIDTH,
+) -> tuple[object, ...]:
+    device_index = query.device.index
+    if device_index is None:
+        device_index = torch.cuda.current_device()
+    return (
+        int(device_index),
+        int(query.shape[1]),
+        int(key_cache.shape[2]),
+        int(request_ids.element_size() * 8),
+        key_cache.dtype,
+        int(key_cache.shape[1]),
+        tuple(map(int, key_cache.stride()[:3])),
+        tuple(map(int, value_cache.stride()[:3])),
+        bool(direct_output),
+        bool(return_lse) if direct_output else True,
+        int(kv_warps),
+        int(selection_width),
+    )
+
+
+def _pointer(
+    tensor: torch.Tensor,
+    dtype: type[cutlass.Numeric],
+) -> cute.Pointer:
+    return make_ptr(
+        dtype,
+        tensor.data_ptr(),
+        cute.AddressSpace.gmem,
+        assumed_align=max(1, dtype.width // 8),
+    )
+
+
+def _fake_pointer(dtype: type[cutlass.Numeric]) -> cute.Pointer:
+    return make_ptr(
+        dtype,
+        16,
+        cute.AddressSpace.gmem,
+        assumed_align=max(1, dtype.width // 8),
+    )
+
+
+def _compile(
+    *,
+    query: torch.Tensor,
+    key_cache: torch.Tensor,
+    value_cache: torch.Tensor,
+    request_ids: torch.Tensor,
+    direct_output: bool,
+    return_lse: bool,
+    kv_warps: int,
+    selection_width: int = _SELECTION_WIDTH,
+) -> tuple[tuple[object, ...], Callable[..., None]]:
+    key = _cache_key(
+        query,
+        key_cache,
+        value_cache,
+        request_ids,
+        direct_output=direct_output,
+        return_lse=return_lse,
+        kv_warps=kv_warps,
+        selection_width=selection_width,
+    )
+    with _LOCK:
+        cached = _KERNEL_CACHE.get(key)
+        if cached is not None:
+            return key, cached
+        (
+            _,
+            q_heads,
+            kv_heads,
+            request_id_bits,
+            kv_dtype,
+            page_size,
+            key_strides,
+            value_strides,
+            direct_output,
+            return_lse,
+            kv_warps,
+            selection_width,
+        ) = key
+        request_id_type = Int32 if request_id_bits == 32 else Int64
+        kv_type = Float8E4M3FN if kv_dtype == torch.float8_e4m3fn else BFloat16
+        kernel = _SelectedPositionPagedForwardKernel(
+            q_heads=q_heads,
+            kv_heads=kv_heads,
+            kv_is_fp8=kv_dtype == torch.float8_e4m3fn,
+            direct_output=direct_output,
+            return_lse=return_lse,
+            kv_warps=kv_warps,
+            page_size=page_size,
+            key_strides=key_strides,
+            value_strides=value_strides,
+            selection_width=selection_width,
+        )
+        with torch.cuda.device(key[0]):
+            raise_if_kernel_resolution_frozen(
+                "cute.compile",
+                target=kernel,
+                cache_key=key,
+            )
+            raw = b12x_compile(
+                kernel,
+                _fake_pointer(BFloat16),
+                _fake_pointer(kv_type),
+                _fake_pointer(kv_type),
+                _fake_pointer(Float32),
+                _fake_pointer(Float32),
+                _fake_pointer(Int32),
+                _fake_pointer(request_id_type),
+                _fake_pointer(Int32),
+                _fake_pointer(Int64),
+                _fake_pointer(Float32),
+                _fake_pointer(Float32),
+                _fake_pointer(BFloat16),
+                Int64(1),
+                Int64(1),
+                Int64(1),
+                Float32(1.0),
+                Int32(1),
+                Int32(1),
+                current_cuda_stream(),
+                compile_spec=KernelCompileSpec.from_key(
+                    "attention.paged.selected_forward",
+                    4,
+                    (
+                        q_heads,
+                        kv_heads,
+                        request_id_bits,
+                        str(kv_dtype),
+                        page_size,
+                        key_strides,
+                        value_strides,
+                        direct_output,
+                        return_lse,
+                        kv_warps,
+                        selection_width,
+                    ),
+                    labels=(
+                        "q_heads",
+                        "kv_heads",
+                        "request_id_bits",
+                        "kv_dtype",
+                        "page_size",
+                        "key_strides",
+                        "value_strides",
+                        "direct_output",
+                        "return_lse",
+                        "kv_warps",
+                        "selection_width",
+                    ),
+                ),
+            )
+        _KERNEL_CACHE[key] = raw
+        return key, raw
+
+
+def precompile_sparse_gqa_split(
+### selected position handling in kernel
+        register_key: cute.Tensor,
+        register_probability: cute.Tensor,
+        register_value: cute.Tensor,
+        copy_query: cute.TiledCopy,
+        copy_key: cute.TiledCopy,
+        copy_probability: cute.TiledCopy,
+        copy_value: cute.TiledCopy,
+        copy_source_query: cute.Tensor,
+        copy_source_key: cute.Tensor,
+        copy_source_probability: cute.Tensor,
+        copy_source_value: cute.Tensor,
+        accumulator_output: cute.Tensor,
+        softmax: Softmax,
+        is_first: cutlass.Constexpr,
+    ) -> None:
+        column = thread
+        if column < Int32(self.tile_n):
+            selected_column = tile * Int32(self.tile_n) + column
+            valid = request_valid & (selected_column < Int32(self.selection_width))
+            logical_position = Int64(-1)
+            if valid:
+                selected_offset = row.to(Int64) * Int64(
+                    self.selection_width
+                ) + selected_column.to(Int64)
+                logical_position = selected_positions[selected_offset].to(Int64)
+                valid = (logical_position >= Int64(0)) & (
+                    logical_position <= query_position
+                )
+
+            physical_page = Int64(-1)
+            page_offset = Int64(0)
+            if valid:
+                logical_page = logical_position // Int64(self.page_size)
+                valid = logical_page < table_width
+                if valid:
+                    table_offset = request_id * table_width + logical_page
+                    physical_page = block_table[table_offset].to(Int64)
+                    valid = (physical_page >= Int64(0)) & (
+                        physical_page < num_cache_pages
+                    )
+                    page_offset = logical_position % Int64(self.page_size)
+
+            key_base = Int64(-1)
+            value_base = Int64(-1)
+            if valid:
+                key_base = (
+                    physical_page * Int64(self.key_page_stride)
+                    + page_offset * Int64(self.key_token_stride)
+                    + kv_head.to(Int64) * Int64(self.key_head_stride)
+                )
+                if const_expr(self.shared_cache_strides):
+                    value_base = key_base
+                else:
+                    value_base = (
+                        physical_page * Int64(self.value_page_stride)
+                        + page_offset * Int64(self.value_token_stride)
+                        + kv_head.to(Int64) * Int64(self.value_head_stride)
+                    )
+            key_bases[column] = key_base
+            if const_expr(not self.shared_cache_strides):
+                value_bases[column] = value_base
+        cute.arch.sync_threads()
+
+        if const_expr(not self.kv_is_fp8):
+            vectors_per_row = _HEAD_DIM // 8
+            for vector_iter in cutlass.range_constexpr(
+                self.tile_n * vectors_per_row // self.threads
+            ):
+                linear_vector = thread + Int32(vector_iter * self.threads)
+                token = linear_vector // Int32(vectors_per_row)
+                vector = linear_vector % Int32(vectors_per_row)
+### callers
+b12x/attention/paged/_selected_forward.py:1604:    "launch_selected_paged_gqa_direct",
+b12x/attention/paged/_selected_forward.py:1605:    "launch_sparse_gqa_split",
+b12x/attention/qsa/_sparse_gqa.py:378:        from ..paged._selected_forward import launch_selected_paged_gqa_direct
+b12x/attention/qsa/_sparse_gqa.py:380:        launch_selected_paged_gqa_direct(
+b12x/attention/qsa/_sparse_gqa.py:416:        launch_sparse_gqa_split,
+b12x/attention/qsa/_sparse_gqa.py:419:    launch_sparse_gqa_split(
+b12x/attention/qsa/_sparse_gqa_cute.py:5:    launch_selected_paged_gqa_direct,
+b12x/attention/qsa/_sparse_gqa_cute.py:7:    launch_sparse_gqa_split,

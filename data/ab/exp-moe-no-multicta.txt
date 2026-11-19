@@ -1,0 +1,9 @@
+=== moe-no-multicta 23:21:21
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          41823.86  
+Median TTFT (ms):                        41884.08  
+real-text prefill 14569 tokens: 40.37 s
+real-text prefill 14571 tokens: 40.35 s
+real-text prefill 14569 tokens: 40.37 s
+decode c=4 real text: per-request [2.6, 2.6, 2.6, 2.6] chunks/s, mean TTFT 17.36 s, MTP acceptance 53.7% (2.15 accepted per step)

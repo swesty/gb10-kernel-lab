@@ -1,0 +1,17 @@
+gb10-kernel-lab
+Copyright 2026 the gb10-kernel-lab authors. Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This repository contains modified and unmodified copies of third-party Apache-2.0 software:
+
+- vLLM (https://github.com/vllm-project/vllm), Apache License 2.0. Modified files are under
+  recipe/mods/flashnext-gb10-fast/files/vllm/, patches/vllm/ and patches/container-snapshot-20261119/vllm/;
+  the changes are described in REPORT.md and recorded as diffs in patches/.
+- b12x (https://github.com/lukealonso/b12x), version 1.5.0, Apache License 2.0. reference/b12x-1.5.0/ is an
+  unmodified copy for reading; modified files are under recipe/mods/flashnext-gb10-fast/files/b12x/,
+  patches/b12x/ and patches/container-snapshot-20261119/b12x/.
+
+data/qsa-dump/prompt.txt, the real-text benchmark prompt, is an excerpt of the Python documentation
+(collections module), Copyright Python Software Foundation, used under its documentation licence.
+
+Benchmark results and profiles were measured on one NVIDIA DGX Spark (GB10). Not affiliated with NVIDIA,
+the vLLM project, the b12x authors or local-inference-lab.

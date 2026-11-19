@@ -1,0 +1,42 @@
+=== B-patched 22:27:33
+--- warmup
+--- prefill 16K x4, c=1, out 8
+Successful requests:                     4         
+Failed requests:                         0         
+Output token throughput (tok/s):         1.14      
+Total token throughput (tok/s):          2325.74   
+Mean TTFT (ms):                          6709.83   
+Median TTFT (ms):                        6721.38   
+P90 TTFT (ms):                           6951.79   
+Mean TPOT (ms):                          48.26     
+Median TPOT (ms):                        50.04     
+Acceptance rate (%):                     0.93      
+Acceptance length:                       1.04      
+--- 8K in / 256 out, c=1, x6
+Successful requests:                     6         
+Failed requests:                         0         
+Output token throughput (tok/s):         25.12     
+Total token throughput (tok/s):          828.84    
+Mean TTFT (ms):                          3321.67   
+Median TTFT (ms):                        3459.24   
+P90 TTFT (ms):                           3477.85   
+Mean TPOT (ms):                          26.94     
+Median TPOT (ms):                        26.44     
+Acceptance rate (%):                     32.35     
+Acceptance length:                       2.29      
+--- 8K in / 256 out, c=4, x12
+Successful requests:                     12        
+Failed requests:                         0         
+Output token throughput (tok/s):         46.91     
+Total token throughput (tok/s):          1547.93   
+Mean TTFT (ms):                          2425.91   
+Median TTFT (ms):                        2207.99   
+P90 TTFT (ms):                           5349.54   
+Mean TPOT (ms):                          72.28     
+Median TPOT (ms):                        70.97     
+Acceptance rate (%):                     29.26     
+Acceptance length:                       2.17      
+--- real text 14.5K, c=1, x3 (nonce defeats prefix cache), plus greedy output check
+Traceback (most recent call last):
+  File "<stdin>", line 10, in <module>
+NameError: name 'usage' is not defined

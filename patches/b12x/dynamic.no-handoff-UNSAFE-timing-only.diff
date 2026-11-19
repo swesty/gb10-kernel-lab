@@ -1,0 +1,33 @@
+--- dynamic.stage.py	2026-11-18 21:37:01
++++ dynamic.sol.py	2026-11-18 21:40:14
+@@ -1313,6 +1313,30 @@
+             barrier_id=3,
+             num_threads=self.threads_per_cta,
+         )
++        # UNSAFE timing experiment (gb10-kernel-lab): drop the producer/consumer
++        # hand-off barriers so the TMA warp can run ahead into the next FC1 and
++        # FC2 loads. Results are wrong (shared buffers are overwritten early);
++        # only the time is meaningful, as an upper bound for giving the
++        # intermediate and FC2 weights their own buffers.
++        if __import__("os").environ.get("B12X_MOE_SOL_NO_HANDOFF") == "1":
++            class _NoBarrier:
++                def arrive_unaligned(self, *a, **k):
++                    return None
++
++                def wait_unaligned(self, *a, **k):
++                    return None
++
++                def arrive_and_wait(self, *a, **k):
++                    return None
++
++                def arrive(self, *a, **k):
++                    return None
++
++                def wait(self, *a, **k):
++                    return None
++
++            self.pass_gate_barrier = _NoBarrier()
++            self.pass_final_barrier = _NoBarrier()
+         # Disjoint token groups exchange route caches through named barriers
+         # without serializing the whole CTA.
+         self.input_pair_barrier_0 = pipeline.NamedBarrier(

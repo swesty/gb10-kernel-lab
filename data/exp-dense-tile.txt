@@ -1,0 +1,10 @@
+=== dense-tile 13:36:55
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          4972.26   
+Median TTFT (ms):                        4990.00   
+real-text prefill 14566 tokens: 4.83 s
+real-text prefill 14570 tokens: 4.83 s
+real-text prefill 14571 tokens: 4.83 s
+decode c=4 real text: per-request [26.4, 26.8, 29.8, 26.1] tokens/s, mean TTFT 2.32 s, MTP acceptance 52.3% (2.09 accepted per step)
+decode c=1 real text: 46.6 tokens/s (TTFT 0.06 s), MTP acceptance 45.8%

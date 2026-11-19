@@ -1,0 +1,10 @@
+=== A-original
+greedy output: "The provided documentation details Python's `collections`, `itertools`, and `functools` modules, which offer specialized data structures like `ChainMap` and `Counter`, efficient iterator functions for combinatorics and filtering, and higher-order functions for caching and function manipulation. It also extensively covers the `asyncio` module, describing its core components for asynchronous programming, including event loops, protocols, transports, and synchronization primitives like locks and queues. Together, these sections outline the"
+real-text prefill 14572 tokens: 6.55 s
+real-text prefill 14570 tokens: 6.54 s
+real-text prefill 14570 tokens: 6.56 s
+decode c=4 real text: per-request [8.8, 8.7, 8.6, 8.8] chunks/s, mean TTFT 2.80 s, MTP acceptance 51.8% (2.07 accepted per step)
+real-text prefill 14568 tokens: 6.56 s
+real-text prefill 14570 tokens: 6.57 s
+real-text prefill 14569 tokens: 6.57 s
+decode c=4 real text: per-request [8.8, 9.0, 8.7, 8.8] chunks/s, mean TTFT 0.23 s, MTP acceptance 52.3% (2.09 accepted per step)

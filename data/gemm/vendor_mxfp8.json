@@ -1,0 +1,594 @@
+[
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cutlass]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016602248651906848,
+  "kernels_cold": {
+   "_ZN7cutlass13device_kernelIN10flashinfer4gemm54DeviceGemmMxfp8GemmSm12": 3579.632999999998
+  },
+  "kern_cold_us": 3579.632999999998,
+  "tflops_cold": 95.9867627994267
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cudnn]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016602248651906848,
+  "kernels_cold": {
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 2203.501
+  },
+  "kern_cold_us": 2203.501,
+  "tflops_cold": 155.9324836612282
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cute-dsl]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'cute-dsl' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[trtllm]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'trtllm' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[b12x]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016602248651906848,
+  "kernels_cold": {
+   "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm12": 2235.846999999998
+  },
+  "kern_cold_us": 2235.846999999998,
+  "tflops_cold": 153.67660831890566
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[auto]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016602248651906848,
+  "kernels_cold": {
+   "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm12": 2244.0420000000013
+  },
+  "kern_cold_us": 2244.0420000000013,
+  "tflops_cold": 153.11539787579724
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "torch._scaled_mm[mxfp8]",
+  "torch": "2.13.0+cu130",
+  "err_vs_qref": 0.0016602248651906848,
+  "kernels_cold": {
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 2192.8450000000003
+  },
+  "kern_cold_us": 2192.8450000000003,
+  "tflops_cold": 156.6902283015899
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "torch._scaled_mm[fp8 per-tensor, reference]",
+  "kernels_cold": {
+   "nvjet_sm121_qqtst_mma_192x176x128_2_48x88x128_tmaAB_bz_TNNN": 1892.6750000000002
+  },
+  "kern_cold_us": 1892.6750000000002,
+  "tflops_cold": 181.5406150976792
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "vendor": "cublas.bf16 (reference)",
+  "err_vs_qref": 5.57724666595459,
+  "kernels_cold": {
+   "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_12": 3677.5859999999993
+  },
+  "kern_cold_us": 3677.5859999999993,
+  "tflops_cold": 93.43014240319602
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cutlass]",
+  "flashinfer": "0.7.1",
+  "error": "ValueError: MXFP8 requires n >= 128 and k >= 128 for CUTLASS MXFP8. got m=4096, n=96, k=2560."
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cudnn]",
+  "flashinfer": "0.7.1",
+  "error": "ValueError: MXFP8 requires n >= 128 and k >= 128 for CUTLASS MXFP8. got m=4096, n=96, k=2560."
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cute-dsl]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'cute-dsl' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[trtllm]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'trtllm' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[b12x]",
+  "flashinfer": "0.7.1",
+  "error": "ValueError: MXFP8 requires n >= 128 and k >= 128 for CUTLASS MXFP8. got m=4096, n=96, k=2560."
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[auto]",
+  "flashinfer": "0.7.1",
+  "error": "ValueError: MXFP8 requires n >= 128 and k >= 128 for CUTLASS MXFP8. got m=4096, n=96, k=2560."
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "torch._scaled_mm[mxfp8]",
+  "torch": "2.13.0+cu130",
+  "err_vs_qref": 0.0016620148671790957,
+  "kernels_cold": {
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 100.09400000000005
+  },
+  "kern_cold_us": 100.09400000000005,
+  "tflops_cold": 20.1137522728635
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "torch._scaled_mm[fp8 per-tensor, reference]",
+  "kernels_cold": {
+   "nvjet_sm121_qqtst_mma_64x64x128_6_64x16x128_tmaAB_bz_TNNN": 101.97899999999936
+  },
+  "kern_cold_us": 101.97899999999936,
+  "tflops_cold": 19.74196569882047
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "vendor": "cublas.bf16 (reference)",
+  "err_vs_qref": 5.567141532897949,
+  "kernels_cold": {
+   "nvjet_sm121_tst_mma_128x96x64_3_64x24x64_tmaAB_bz_TNNN": 162.20399999999972
+  },
+  "kern_cold_us": 162.20399999999972,
+  "tflops_cold": 12.411937560109513
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "flashinfer.mm_mxfp8[cutlass]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016578200738877058,
+  "kernels_cold": {
+   "_ZN7cutlass13device_kernelIN10flashinfer4gemm54DeviceGemmMxfp8GemmSm12": 2841.709999999999
+  },
+  "kern_cold_us": 2841.709999999999,
+  "tflops_cold": 45.34207180887566
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "flashinfer.mm_mxfp8[cudnn]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016578200738877058,
+  "kernels_cold": {
+   "Memset (Device)": 0.5119999999997162,
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 751.1700000000001
+  },
+  "kern_cold_us": 751.6819999999998,
+  "tflops_cold": 171.4142667777066
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "flashinfer.mm_mxfp8[cute-dsl]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'cute-dsl' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "flashinfer.mm_mxfp8[trtllm]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'trtllm' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "flashinfer.mm_mxfp8[b12x]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016578200738877058,
+  "kernels_cold": {
+   "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm12": 1314.2869999999998
+  },
+  "kern_cold_us": 1314.2869999999998,
+  "tflops_cold": 98.0372010679555
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "flashinfer.mm_mxfp8[auto]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016578200738877058,
+  "kernels_cold": {
+   "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm12": 1241.321
+  },
+  "kern_cold_us": 1241.321,
+  "tflops_cold": 103.79991869951446
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "torch._scaled_mm[mxfp8]",
+  "torch": "2.13.0+cu130",
+  "err_vs_qref": 0.0016578200738877058,
+  "kernels_cold": {
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 775.9399999999996
+  },
+  "kern_cold_us": 775.9399999999996,
+  "tflops_cold": 166.0553894373277
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "torch._scaled_mm[fp8 per-tensor, reference]",
+  "kernels_cold": {
+   "nvjet_sm121_qqtst_mma_192x176x128_2_48x88x128_tmaAB_bz_TNNN": 738.8779999999997
+  },
+  "kern_cold_us": 738.8779999999997,
+  "tflops_cold": 174.3847006948374
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "vendor": "cublas.bf16 (reference)",
+  "err_vs_qref": 5.582083702087402,
+  "kernels_cold": {
+   "nvjet_sm121_tst_mma_192x144x64_2_48x72x64_tmaAB_bz_TNNN": 1573.5429999999997
+  },
+  "kern_cold_us": 1573.5429999999997,
+  "tflops_cold": 81.88465067684837
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cutlass]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.001661126152612269,
+  "kernels_cold": {
+   "_ZN7cutlass13device_kernelIN10flashinfer4gemm54DeviceGemmMxfp8GemmSm12": 360.2220000000001
+  },
+  "kern_cold_us": 360.2220000000001,
+  "tflops_cold": 74.51945078312816
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cudnn]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.001661126152612269,
+  "kernels_cold": {
+   "Memset (Device)": 0.512000000000171,
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 195.55000000000018
+  },
+  "kern_cold_us": 196.06200000000035,
+  "tflops_cold": 136.9135559159855
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[cute-dsl]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'cute-dsl' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[trtllm]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'trtllm' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[b12x]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.001661126152612269,
+  "kernels_cold": {
+   "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm12": 255.33200000000033
+  },
+  "kern_cold_us": 255.33200000000033,
+  "tflops_cold": 105.13192862625901
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "flashinfer.mm_mxfp8[auto]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.001661126152612269,
+  "kernels_cold": {
+   "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm12": 256.4489999999996
+  },
+  "kern_cold_us": 256.4489999999996,
+  "tflops_cold": 104.67401159684788
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "torch._scaled_mm[mxfp8]",
+  "torch": "2.13.0+cu130",
+  "err_vs_qref": 0.001661126152612269,
+  "kernels_cold": {
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 194.0719999999999
+  },
+  "kern_cold_us": 194.0719999999999,
+  "tflops_cold": 138.31745743847654
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "torch._scaled_mm[fp8 per-tensor, reference]",
+  "kernels_cold": {
+   "nvjet_sm121_qqtst_mma_128x224x128_2_32x112x128_tmaAB_bz_TNNN": 212.47399999999925
+  },
+  "kern_cold_us": 212.47399999999925,
+  "tflops_cold": 126.33802535839723
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "vendor": "cublas.bf16 (reference)",
+  "err_vs_qref": 5.588526248931885,
+  "kernels_cold": {
+   "nvjet_sm121_tst_mma_128x176x64_2_32x88x64_tmaAB_bz_TNNN": 377.6210000000001
+  },
+  "kern_cold_us": 377.6210000000001,
+  "tflops_cold": 71.08594490242861
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "flashinfer.mm_mxfp8[cutlass]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016595629276707768,
+  "kernels_cold": {
+   "_ZN7cutlass13device_kernelIN10flashinfer4gemm54DeviceGemmMxfp8GemmSm12": 176.82600000000002
+  },
+  "kern_cold_us": 176.82600000000002,
+  "tflops_cold": 75.90384219515228
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "flashinfer.mm_mxfp8[cudnn]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016595629276707768,
+  "kernels_cold": {
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 138.6889999999994
+  },
+  "kern_cold_us": 138.6889999999994,
+  "tflops_cold": 96.77604424287476
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "flashinfer.mm_mxfp8[cute-dsl]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'cute-dsl' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "flashinfer.mm_mxfp8[trtllm]",
+  "flashinfer": "0.7.1",
+  "error": "BackendSupportedError: mm_mxfp8 does not support backend 'trtllm' with capability 121"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "flashinfer.mm_mxfp8[b12x]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016595629276707768,
+  "kernels_cold": {
+   "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm12": 156.92599999999993
+  },
+  "kern_cold_us": 156.92599999999993,
+  "tflops_cold": 85.52931190497435
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "flashinfer.mm_mxfp8[auto]",
+  "flashinfer": "0.7.1",
+  "err_vs_qref": 0.0016595629276707768,
+  "kernels_cold": {
+   "kernel_cutlass_kernel_flashinfergemmkernelsdense_blockscaled_gemm_sm12": 147.16399999999976
+  },
+  "kern_cold_us": 147.16399999999976,
+  "tflops_cold": 91.20282677828831
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "torch._scaled_mm[mxfp8]",
+  "torch": "2.13.0+cu130",
+  "err_vs_qref": 0.0016595629276707768,
+  "kernels_cold": {
+   "cutlass3x_sm120_bstensorop_s16832gemm_block_scaled_ue8m0xe4m3_ue8m0xe4": 137.88200000000006
+  },
+  "kern_cold_us": 137.88200000000006,
+  "tflops_cold": 97.34245804383454
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "torch._scaled_mm[fp8 per-tensor, reference]",
+  "kernels_cold": {
+   "sm89_xmma_gemm_e4m3bf16_e4m3f32_f32_tn_n_tilesize128x128x64_stage3_war": 146.71800000000007
+  },
+  "kern_cold_us": 146.71800000000007,
+  "tflops_cold": 91.48006924849024
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "vendor": "cublas.bf16 (reference)",
+  "err_vs_qref": 5.576173305511475,
+  "kernels_cold": {
+   "void cutlass::Kernel2<cutlass_80_tensorop_bf16_s16816gemm_relu_bf16_25": 220.0
+  },
+  "kern_cold_us": 220.0,
+  "tflops_cold": 61.00805818181818
+ }
+]

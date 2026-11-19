@@ -1,0 +1,10 @@
+=== ple-prefetch 13:25:34
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          4997.82   
+Median TTFT (ms):                        5002.53   
+real-text prefill 14572 tokens: 4.87 s
+real-text prefill 14569 tokens: 4.85 s
+real-text prefill 14569 tokens: 4.86 s
+decode c=4 real text: per-request [28.4, 25.9, 30.7, 25.9] tokens/s, mean TTFT 2.34 s, MTP acceptance 52.3% (2.09 accepted per step)
+decode c=1 real text: 53.7 tokens/s (TTFT 0.06 s), MTP acceptance 56.7%

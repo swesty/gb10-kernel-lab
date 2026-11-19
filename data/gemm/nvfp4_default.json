@@ -1,0 +1,350 @@
+[
+ {
+  "shape": "qkvz",
+  "M": 4096,
+  "N": 16384,
+  "K": 2560,
+  "flops": 343597383680.0,
+  "bytes_floor": 163708928,
+  "floor_bytes_us": 727.5952355555555,
+  "floor_peak_us": 689.9545857028113,
+  "default_lowering": {
+   "tile": [
+    128,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "single_tile_per_cta": false,
+   "occupancy": 1,
+   "sm_count": 48,
+   "cluster": [
+    1,
+    1
+   ],
+   "expected_m": null
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "mode": "quantized"
+  },
+  "live_hot_us": 1299.728012084961,
+  "live_cold_us": 1252.0320415496826,
+  "live_cold_min_us": 1223.3599424362183,
+  "live_kernels_cold": {
+   "_quantize": 147.45599999999922,
+   "DenseGemmKernel": 1109.92
+  },
+  "live_kernels_hot": {
+   "_quantize": 130.3050000000003,
+   "DenseGemmKernel": 1106.183
+  },
+  "serial_gemm_hot_us": 1120.08638381958,
+  "serial_gemm_cold_us": 1096.511960029602,
+  "serial_gemm_cold_min_us": 1089.2159938812256,
+  "serial_q+gemm_cold_us": 1220.2880382537842,
+  "serial_kernels_cold": {
+   "void vllm::cvt_fp16_to_fp4<__nv_bfloat16, false, false>(int,": 147.0719999999999,
+   "DenseGemmKernel": 1067.9090000000006
+  },
+  "err_serial_vs_qref": 0.0016609433805570006,
+  "err_live_vs_qref": 0.00858198944479227,
+  "err_live_vs_serial": 0.008703977800905704,
+  "err_live_vs_bf16ref": 0.09511422365903854,
+  "live_gemm_cold_tflops": 309.5695038200951,
+  "live_gemm_cold_pct_peak": 62.16255096789059
+ },
+ {
+  "shape": "ba",
+  "M": 4096,
+  "N": 96,
+  "K": 2560,
+  "flops": 2013265920.0,
+  "bytes_floor": 6822912,
+  "floor_bytes_us": 30.32405333333333,
+  "floor_peak_us": 4.0427026506024095,
+  "default_lowering": {
+   "tile": [
+    128,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "single_tile_per_cta": false,
+   "occupancy": 1,
+   "sm_count": 48,
+   "cluster": [
+    1,
+    1
+   ],
+   "expected_m": null
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "mode": "quantized"
+  },
+  "live_hot_us": 115.69440364837646,
+  "live_cold_us": 168.73599588871002,
+  "live_cold_min_us": 165.79200327396393,
+  "live_kernels_cold": {
+   "_quantize": 151.64800000000014,
+   "DenseGemmKernel": 13.375999999999294
+  },
+  "live_kernels_hot": {
+   "_quantize": 96.51199999999994,
+   "DenseGemmKernel": 13.695999999999913
+  },
+  "serial_gemm_hot_us": 57.915198802948,
+  "serial_gemm_cold_us": 67.29599833488464,
+  "serial_gemm_cold_min_us": 64.25599753856659,
+  "serial_q+gemm_cold_us": 168.64000260829926,
+  "serial_kernels_cold": {
+   "void vllm::cvt_fp16_to_fp4<__nv_bfloat16, false, false>(int,": 152.32000000000005,
+   "DenseGemmKernel": 13.11999999999989
+  },
+  "err_serial_vs_qref": 0.0016656408552080393,
+  "err_live_vs_qref": 0.0016656408552080393,
+  "err_live_vs_serial": 0.0,
+  "err_live_vs_bf16ref": 0.09504765272140503,
+  "live_gemm_cold_tflops": 150.51330143541463,
+  "live_gemm_cold_pct_peak": 30.22355450510334
+ },
+ {
+  "shape": "out",
+  "M": 4096,
+  "N": 2560,
+  "K": 6144,
+  "flops": 128849018880.0,
+  "bytes_floor": 43974656,
+  "floor_bytes_us": 195.44291555555554,
+  "floor_peak_us": 258.7329696385542,
+  "default_lowering": {
+   "tile": [
+    128,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "single_tile_per_cta": false,
+   "occupancy": 1,
+   "sm_count": 48,
+   "cluster": [
+    1,
+    1
+   ],
+   "expected_m": null
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "mode": "quantized"
+  },
+  "live_hot_us": 728.8544178009033,
+  "live_cold_us": 716.5120244026184,
+  "live_cold_min_us": 706.1759829521179,
+  "live_kernels_cold": {
+   "_quantize": 323.9390000000001,
+   "DenseGemmKernel": 390.6910000000007
+  },
+  "live_kernels_hot": {
+   "_quantize": 296.1300000000001,
+   "DenseGemmKernel": 390.4340000000002
+  },
+  "serial_gemm_hot_us": 367.02880859375,
+  "serial_gemm_cold_us": 466.68800711631775,
+  "serial_gemm_cold_min_us": 461.5040123462677,
+  "serial_q+gemm_cold_us": 694.9759721755981,
+  "serial_kernels_cold": {
+   "void vllm::cvt_fp16_to_fp4<__nv_bfloat16, false, false>(int,": 309.60199999999986,
+   "DenseGemmKernel": 390.8829999999998
+  },
+  "err_serial_vs_qref": 0.0016551620792597532,
+  "err_live_vs_qref": 0.008619912900030613,
+  "err_live_vs_serial": 0.008771572262048721,
+  "err_live_vs_bf16ref": 0.09506022185087204,
+  "live_gemm_cold_tflops": 329.7977657023063,
+  "live_gemm_cold_pct_peak": 66.22445094423823
+ },
+ {
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "flops": 26843545600.0,
+  "bytes_floor": 18227200,
+  "floor_bytes_us": 81.00977777777777,
+  "floor_peak_us": 53.90270200803213,
+  "default_lowering": {
+   "tile": [
+    128,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "single_tile_per_cta": false,
+   "occupancy": 1,
+   "sm_count": 48,
+   "cluster": [
+    1,
+    1
+   ],
+   "expected_m": null
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "mode": "quantized"
+  },
+  "live_hot_us": 222.05920219421387,
+  "live_cold_us": 243.42399835586548,
+  "live_cold_min_us": 239.29600417613983,
+  "live_kernels_cold": {
+   "_quantize": 150.913,
+   "DenseGemmKernel": 87.16800000000012
+  },
+  "live_kernels_hot": {
+   "_quantize": 127.84300000000007,
+   "DenseGemmKernel": 89.95399999999995
+  },
+  "serial_gemm_hot_us": 92.38560199737549,
+  "serial_gemm_cold_us": 135.93600690364838,
+  "serial_gemm_cold_min_us": 132.83200562000275,
+  "serial_q+gemm_cold_us": 239.29600417613983,
+  "serial_kernels_cold": {
+   "void vllm::cvt_fp16_to_fp4<__nv_bfloat16, false, false>(int,": 149.53700000000003,
+   "DenseGemmKernel": 88.25600000000031
+  },
+  "err_serial_vs_qref": 0.0016612546751275659,
+  "err_live_vs_qref": 0.0016612546751275659,
+  "err_live_vs_serial": 0.0,
+  "err_live_vs_bf16ref": 0.09512253850698471,
+  "live_gemm_cold_tflops": 307.9518355359761,
+  "live_gemm_cold_pct_peak": 61.837717979111666
+ },
+ {
+  "shape": "down",
+  "M": 4096,
+  "N": 2560,
+  "K": 640,
+  "flops": 13421772800.0,
+  "bytes_floor": 23367680,
+  "floor_bytes_us": 103.85635555555555,
+  "floor_peak_us": 26.951351004016065,
+  "default_lowering": {
+   "tile": [
+    128,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "single_tile_per_cta": false,
+   "occupancy": 1,
+   "sm_count": 48,
+   "cluster": [
+    1,
+    1
+   ],
+   "expected_m": null
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "mode": "quantized"
+  },
+  "live_hot_us": 149.1328001022339,
+  "live_cold_us": 161.47199273109436,
+  "live_cold_min_us": 156.3519984483719,
+  "live_kernels_cold": {
+   "_quantize": 51.04100000000017,
+   "DenseGemmKernel": 106.78600000000006
+  },
+  "live_kernels_hot": {
+   "_quantize": 29.88799999999992,
+   "DenseGemmKernel": 112.54500000000007
+  },
+  "serial_gemm_hot_us": 118.3791995048523,
+  "serial_gemm_cold_us": 135.903999209404,
+  "serial_gemm_cold_min_us": 132.83200562000275,
+  "serial_q+gemm_cold_us": 164.5440012216568,
+  "serial_kernels_cold": {
+   "void vllm::cvt_fp16_to_fp4<__nv_bfloat16, false, false>(int,": 50.88000000000011,
+   "DenseGemmKernel": 110.97599999999966
+  },
+  "err_serial_vs_qref": 0.001660527428612113,
+  "err_live_vs_qref": 0.0053742993623018265,
+  "err_live_vs_serial": 0.0051976596005260944,
+  "err_live_vs_bf16ref": 0.09513590484857559,
+  "live_gemm_cold_tflops": 125.68850598393041,
+  "live_gemm_cold_pct_peak": 25.23865582006635
+ },
+ {
+  "shape": "attn_qkv",
+  "M": 4096,
+  "N": 13312,
+  "K": 2560,
+  "flops": 279172874240.0,
+  "bytes_floor": 134119424,
+  "floor_bytes_us": 596.0863288888889,
+  "floor_peak_us": 560.5881008835341,
+  "default_lowering": {
+   "tile": [
+    128,
+    128
+   ],
+   "tile_k": 128,
+   "load_path": "tma",
+   "swap_ab": false,
+   "split_k": 1,
+   "single_tile_per_cta": false,
+   "occupancy": 1,
+   "sm_count": 48,
+   "cluster": [
+    1,
+    1
+   ],
+   "expected_m": null
+  },
+  "live_query": {
+   "num_tokens": 4096,
+   "expected_m": null,
+   "mode": "quantized"
+  },
+  "live_hot_us": 1101.3471603393555,
+  "live_cold_us": 1070.7839727401733,
+  "live_cold_min_us": 1051.3279438018799,
+  "live_kernels_cold": {
+   "_quantize": 151.23300000000017,
+   "DenseGemmKernel": 912.6749999999993
+  },
+  "live_kernels_hot": {
+   "_quantize": 133.4399999999996,
+   "DenseGemmKernel": 916.3270000000011
+  },
+  "serial_gemm_hot_us": 908.0495834350586,
+  "serial_gemm_cold_us": 933.7279796600342,
+  "serial_gemm_cold_min_us": 926.4000058174133,
+  "serial_q+gemm_cold_us": 1083.1040143966675,
+  "serial_kernels_cold": {
+   "void vllm::cvt_fp16_to_fp4<__nv_bfloat16, false, false>(int,": 150.39899999999943,
+   "DenseGemmKernel": 912.6739999999991
+  },
+  "err_serial_vs_qref": 0.001660977373830974,
+  "err_live_vs_qref": 0.008615999482572079,
+  "err_live_vs_serial": 0.008735856041312218,
+  "err_live_vs_bf16ref": 0.09509718418121338,
+  "live_gemm_cold_tflops": 305.884213153642,
+  "live_gemm_cold_pct_peak": 61.42253276177551
+ }
+]

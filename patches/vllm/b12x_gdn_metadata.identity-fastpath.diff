@@ -1,0 +1,41 @@
+--- b12x_gdn_metadata.orig.py	2026-11-18 19:14:42
++++ b12x_gdn_metadata.fast.py	2026-11-18 19:15:09
+@@ -141,6 +141,9 @@
+         )
+         self._num_non_spec = 0
+         self._num_spec = 0
++        # Host-side facts about the last staged batch (eager fast paths only).
++        self.host_non_spec_tokens = 0
++        self.host_identity = False
+ 
+     @staticmethod
+     def _copy_list(target: torch.Tensor, values: list[int], *, padding: int = 0):
+@@ -207,6 +210,10 @@
+             self._copy_list(indices, tokens)
+             self._copy_list(row_indices, rows)
+             self._copy_list(counts, [len(rows), len(tokens)])
++            if indices is self.token_indices:
++                self.host_non_spec_tokens = len(tokens)
++                self.host_identity = tokens == list(range(len(tokens)))
++        self.host_identity = self.host_identity and not spec_rows
+ 
+         self.has_initial_state.zero_()
+         if non_spec_rows:
+@@ -266,6 +273,8 @@
+             raise ValueError("GDN metadata reuse requires matching planned capacities")
+         self._num_non_spec = source._num_non_spec
+         self._num_spec = source._num_spec
++        self.host_non_spec_tokens = source.host_non_spec_tokens
++        self.host_identity = source.host_identity
+         for destination, inputs in zip(
+             self._worklists_by_dtype, source._worklists_by_dtype
+         ):
+@@ -290,6 +299,8 @@
+             raise ValueError("GDN metadata reuse requires matching planned capacities")
+         self._num_non_spec = source._num_non_spec
+         self._num_spec = source._num_spec
++        self.host_non_spec_tokens = source.host_non_spec_tokens
++        self.host_identity = source.host_identity
+         _copy_worklists_and_refresh_states[(self._refresh_blocks,)](
+             source._worklists,
+             self._worklists,

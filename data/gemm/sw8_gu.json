@@ -1,0 +1,1119 @@
+[
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "default": true,
+  "compile_s": 0.0,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 262.8,
+  "min_us": 259.9,
+  "max_us": 266.0,
+  "per_placement_us": [
+   262,
+   263,
+   261,
+   266,
+   260,
+   266
+  ],
+  "kern_cold_p0_us": 255.9,
+  "tflops_med": 102.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 1.0,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 422.7,
+  "min_us": 419.7,
+  "max_us": 428.8,
+  "per_placement_us": [
+   423,
+   420,
+   421,
+   427,
+   422,
+   429
+  ],
+  "kern_cold_p0_us": 422.3,
+  "tflops_med": 63.5
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 422.6,
+  "min_us": 417.5,
+  "max_us": 427.7,
+  "per_placement_us": [
+   423,
+   418,
+   418,
+   425,
+   422,
+   428
+  ],
+  "kern_cold_p0_us": 420.8,
+  "tflops_med": 63.5
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 348.9,
+  "min_us": 346.7,
+  "max_us": 349.9,
+  "per_placement_us": [
+   348,
+   347,
+   347,
+   349,
+   349,
+   350
+  ],
+  "kern_cold_p0_us": 349.6,
+  "tflops_med": 76.9
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 347.9,
+  "min_us": 346.8,
+  "max_us": 349.9,
+  "per_placement_us": [
+   348,
+   347,
+   347,
+   350,
+   348,
+   347
+  ],
+  "kern_cold_p0_us": 346.7,
+  "tflops_med": 77.2
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   32,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 430.8,
+  "min_us": 428.8,
+  "max_us": 434.1,
+  "per_placement_us": [
+   430,
+   431,
+   433,
+   434,
+   429,
+   431
+  ],
+  "kern_cold_p0_us": 426.9,
+  "tflops_med": 62.3
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 430.8,
+  "min_us": 426.7,
+  "max_us": 437.9,
+  "per_placement_us": [
+   427,
+   430,
+   431,
+   438,
+   430,
+   434
+  ],
+  "kern_cold_p0_us": 427.5,
+  "tflops_med": 62.3
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 316.1,
+  "min_us": 312.0,
+  "max_us": 316.9,
+  "per_placement_us": [
+   312,
+   317,
+   313,
+   316,
+   312,
+   316
+  ],
+  "kern_cold_p0_us": 314.7,
+  "tflops_med": 84.9
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.0,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 315.1,
+  "min_us": 310.2,
+  "max_us": 316.1,
+  "per_placement_us": [
+   310,
+   316,
+   312,
+   315,
+   314,
+   315
+  ],
+  "kern_cold_p0_us": 364.8,
+  "tflops_med": 85.2
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 316.4,
+  "min_us": 312.2,
+  "max_us": 320.1,
+  "per_placement_us": [
+   312,
+   316,
+   313,
+   320,
+   314,
+   318
+  ],
+  "kern_cold_p0_us": 310.8,
+  "tflops_med": 84.8
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 315.1,
+  "min_us": 311.0,
+  "max_us": 318.2,
+  "per_placement_us": [
+   311,
+   315,
+   313,
+   318,
+   313,
+   316
+  ],
+  "kern_cold_p0_us": 309.6,
+  "tflops_med": 85.2
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 263.9,
+  "min_us": 259.8,
+  "max_us": 265.1,
+  "per_placement_us": [
+   260,
+   265,
+   260,
+   265,
+   261,
+   264
+  ],
+  "kern_cold_p0_us": 257.1,
+  "tflops_med": 101.7
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.0,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 262.9,
+  "min_us": 258.7,
+  "max_us": 264.9,
+  "per_placement_us": [
+   261,
+   265,
+   259,
+   264,
+   261,
+   263
+  ],
+  "kern_cold_p0_us": 257.6,
+  "tflops_med": 102.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 269.0,
+  "min_us": 264.9,
+  "max_us": 272.1,
+  "per_placement_us": [
+   265,
+   270,
+   265,
+   272,
+   267,
+   269
+  ],
+  "kern_cold_p0_us": 262.8,
+  "tflops_med": 99.8
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   64,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 268.3,
+  "min_us": 263.9,
+  "max_us": 273.1,
+  "per_placement_us": [
+   265,
+   268,
+   264,
+   273,
+   269,
+   268
+  ],
+  "kern_cold_p0_us": 262.6,
+  "tflops_med": 100.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   32
+  ],
+  "tile_k": 64,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   32
+  ],
+  "tile_k": 64,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "skip": "dense GEMM tile/layout violates the production MMA contract"
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 374.6,
+  "min_us": 367.3,
+  "max_us": 376.5,
+  "per_placement_us": [
+   367,
+   375,
+   369,
+   377,
+   370,
+   376
+  ],
+  "kern_cold_p0_us": 411.4,
+  "tflops_med": 71.7
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   32
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 372.4,
+  "min_us": 365.3,
+  "max_us": 373.4,
+  "per_placement_us": [
+   365,
+   372,
+   368,
+   372,
+   369,
+   373
+  ],
+  "kern_cold_p0_us": 367.3,
+  "tflops_med": 72.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   64
+  ],
+  "tile_k": 64,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 286.3,
+  "min_us": 280.3,
+  "max_us": 289.5,
+  "per_placement_us": [
+   280,
+   287,
+   284,
+   286,
+   286,
+   290
+  ],
+  "kern_cold_p0_us": 277.5,
+  "tflops_med": 93.8
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   64
+  ],
+  "tile_k": 64,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 285.4,
+  "min_us": 278.2,
+  "max_us": 288.5,
+  "per_placement_us": [
+   278,
+   286,
+   282,
+   288,
+   285,
+   285
+  ],
+  "kern_cold_p0_us": 350.4,
+  "tflops_med": 94.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 273.1,
+  "min_us": 265.1,
+  "max_us": 278.2,
+  "per_placement_us": [
+   265,
+   273,
+   267,
+   278,
+   268,
+   274
+  ],
+  "kern_cold_p0_us": 262.8,
+  "tflops_med": 98.3
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 272.3,
+  "min_us": 264.1,
+  "max_us": 276.4,
+  "per_placement_us": [
+   264,
+   275,
+   266,
+   276,
+   268,
+   272
+  ],
+  "kern_cold_p0_us": 263.2,
+  "tflops_med": 98.6
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 285.4,
+  "min_us": 277.1,
+  "max_us": 285.4,
+  "per_placement_us": [
+   277,
+   285,
+   277,
+   285,
+   280,
+   285
+  ],
+  "kern_cold_p0_us": 277.4,
+  "tflops_med": 94.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   64
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 285.4,
+  "min_us": 280.3,
+  "max_us": 286.4,
+  "per_placement_us": [
+   280,
+   285,
+   280,
+   286,
+   280,
+   285
+  ],
+  "kern_cold_p0_us": 274.1,
+  "tflops_med": 94.1
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 64,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.3,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 254.7,
+  "min_us": 251.6,
+  "max_us": 255.8,
+  "per_placement_us": [
+   252,
+   252,
+   256,
+   255,
+   253,
+   256
+  ],
+  "kern_cold_p0_us": 248.4,
+  "tflops_med": 105.4
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 64,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.4,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 247.5,
+  "min_us": 241.4,
+  "max_us": 253.6,
+  "per_placement_us": [
+   241,
+   248,
+   249,
+   254,
+   244,
+   244
+  ],
+  "kern_cold_p0_us": 237.9,
+  "tflops_med": 108.5
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": false,
+  "compile_s": 0.5,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 297.7,
+  "min_us": 295.6,
+  "max_us": 312.0,
+  "per_placement_us": [
+   298,
+   296,
+   299,
+   312,
+   298,
+   297
+  ],
+  "kern_cold_p0_us": 303.5,
+  "tflops_med": 90.2
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": false,
+  "large_m_unroll": true,
+  "compile_s": 0.6,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 295.5,
+  "min_us": 291.6,
+  "max_us": 301.8,
+  "per_placement_us": [
+   293,
+   296,
+   296,
+   302,
+   295,
+   292
+  ],
+  "kern_cold_p0_us": 290.9,
+  "tflops_med": 90.8
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": false,
+  "compile_s": 0.6,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 314.1,
+  "min_us": 307.9,
+  "max_us": 323.3,
+  "per_placement_us": [
+   314,
+   311,
+   323,
+   323,
+   308,
+   311
+  ],
+  "kern_cold_p0_us": 305.9,
+  "tflops_med": 85.5
+ },
+ {
+  "recipe": "mxfp8",
+  "shape": "gu",
+  "M": 4096,
+  "N": 1280,
+  "K": 2560,
+  "sched": "stock",
+  "tile": [
+   128,
+   128
+  ],
+  "tile_k": 128,
+  "swap_ab": true,
+  "large_m_unroll": true,
+  "compile_s": 0.6,
+  "err_vs_qref": 0.001661126152612269,
+  "err_vs_live": 0.0,
+  "med_us": 306.9,
+  "min_us": 304.9,
+  "max_us": 318.2,
+  "per_placement_us": [
+   307,
+   307,
+   307,
+   318,
+   305,
+   307
+  ],
+  "kern_cold_p0_us": 304.9,
+  "tflops_med": 87.5
+ }
+]

@@ -1,0 +1,10 @@
+=== final-session-all 11:23:03
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          5841.62   
+Median TTFT (ms):                        5854.96   
+real-text prefill 14573 tokens: 5.48 s
+real-text prefill 14567 tokens: 5.46 s
+real-text prefill 14573 tokens: 5.47 s
+decode c=4 real text: per-request [26.7, 26.3, 29.3, 26.9] tokens/s, mean TTFT 2.50 s, MTP acceptance 53.2% (2.13 accepted per step)
+decode c=1 real text: 51.0 tokens/s (TTFT 0.06 s), MTP acceptance 53.7%

@@ -1,0 +1,10 @@
+=== dense-raster 12:43:50
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          5542.54   
+Median TTFT (ms):                        5562.80   
+real-text prefill 14568 tokens: 5.21 s
+real-text prefill 14571 tokens: 5.20 s
+real-text prefill 14572 tokens: 5.21 s
+decode c=4 real text: per-request [27.1, 27.4, 29.5, 26.9] tokens/s, mean TTFT 2.37 s, MTP acceptance 54.9% (2.20 accepted per step)
+decode c=1 real text: 47.6 tokens/s (TTFT 0.06 s), MTP acceptance 47.4%

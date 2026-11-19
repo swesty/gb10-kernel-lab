@@ -1,0 +1,33 @@
+--- b12x/gemm/blockscaled/_preparation.py.orig	2026-11-19 13:31:18.373540652 +0000
++++ b12x/gemm/blockscaled/_preparation.py	2026-11-19 13:31:18.373760317 +0000
+@@ -40,10 +40,30 @@
+         output_mode="functional" if functional else "provided",
+         alpha_mode="unit" if functional else "tensor",
+         expected_m=expected_m,
++        **_dense_tile_override(query.out_features, query.padded_in_features, expected_m),
+     )
+     return _default_lowering(inner, device.identity)
+ 
+ 
++def _dense_tile_override(n, k, expected_m):
++    import os as _os_to
++    spec = _os_to.environ.get("B12X_DENSE_TILE_OVERRIDE", "")
++    if not spec or expected_m is None or expected_m < 2048:
++        return {}
++    for item in spec.split(","):
++        shape, _, tile = item.partition("=")
++        sn, sk = (int(v) for v in shape.split("x"))
++        if (sn, sk) != (int(n), int(k)):
++            continue
++        dims, _, flag = tile.partition(":")
++        tm, tn, tk = (int(v) for v in dims.split("x"))
++        overrides = {"mma_tiler_mn": (tm, tn), "_tile_k_override": tk}
++        if flag == "lmu":
++            overrides["_large_m_unroll_override"] = True
++        return {"overrides": overrides}
++    return {}
++
++
+ def _has_mxfp8_prefill_regime(query):
+     return (
+         query.recipe == "mxfp8" and query.expected_m is None

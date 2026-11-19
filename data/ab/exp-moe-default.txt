@@ -1,0 +1,9 @@
+=== moe-default 23:09:17
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          6704.99   
+Median TTFT (ms):                        6720.18   
+real-text prefill 14567 tokens: 6.23 s
+real-text prefill 14571 tokens: 6.26 s
+real-text prefill 14569 tokens: 6.24 s
+decode c=4 real text: per-request [8.6, 9.2, 8.6, 8.8] chunks/s, mean TTFT 2.73 s, MTP acceptance 51.3% (2.05 accepted per step)

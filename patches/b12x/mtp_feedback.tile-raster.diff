@@ -1,0 +1,48 @@
+--- _cute_prefill.py.orig	2026-11-19 11:37:13.641389585 +0000
++++ _cute_prefill.py	2026-11-19 11:37:13.641575089 +0000
+@@ -26,9 +26,11 @@
+ from b12x._lib.program_cache import register_program_cache
+ 
+ 
+-_TILE_N = 16
++import os as _os
++_TILE_N = int(_os.environ.get("B12X_MTP_TILE_N", "16"))
++_RASTER_N = _os.environ.get("B12X_MTP_RASTER_N", "0") == "1"
+ _TILE_K = 64
+-_STAGES = 3
++_STAGES = int(_os.environ.get("B12X_MTP_STAGES", "3"))
+ _BUFFER_ALIGN_BYTES = 1_024
+ _CACHE_LOCK = RLock()
+ _KERNEL_CACHE: Dict[Tuple[int, int, int, int, int, bool], object] = {}
+@@ -252,6 +254,10 @@
+             SharedStorage,
+         ).launch(
+             grid=(
++                self.output_columns // _TILE_N,
++                (live_rows + Int32(self.tile_m - 1)) // Int32(self.tile_m),
++                1,
++            ) if _RASTER_N else (
+                 (live_rows + Int32(self.tile_m - 1)) // Int32(self.tile_m),
+                 self.output_columns // _TILE_N,
+                 1,
+@@ -277,7 +283,10 @@
+         SharedStorage: cutlass.Constexpr,
+     ):
+         tidx, _, _ = cute.arch.thread_idx()
+-        m_tile, n_tile, _ = cute.arch.block_idx()
++        if cutlass.const_expr(_RASTER_N):
++            n_tile, m_tile, _ = cute.arch.block_idx()
++        else:
++            m_tile, n_tile, _ = cute.arch.block_idx()
+         warp_index = cute.arch.make_warp_uniform(cute.arch.warp_idx())
+ 
+         if warp_index == 0:
+@@ -531,7 +540,7 @@
+                 compile_spec=KernelCompileSpec.from_key(
+                     "sequence.mtp_feedback.prefill_bf16_gemm",
+                     3,
+-                    cache_key[1:],
++                    cache_key[1:] + ((_TILE_N, _STAGES, _RASTER_N) if (_TILE_N, _STAGES, _RASTER_N) != (16, 3, False) else ()),
+                 ),
+             )
+ 

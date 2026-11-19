@@ -1,0 +1,52 @@
+--- b12x_moe.orig.py	2026-11-18 21:01:54
++++ b12x_moe.dump.py	2026-11-18 21:01:55
+@@ -881,6 +881,7 @@
+         if workspace2 is None or not workspace2.is_contiguous():
+             raise ValueError("b12x MoE requires contiguous caller-owned workspace2")
+         scratch = workspace2.view(-1).view(torch.uint8)
++        _maybe_dump_moe_routes(self, hidden_states, topk_ids, topk_weights)
+         binding = _require_b12x_fused_moe().bind(
+             plan,
+             scratch=scratch,
+@@ -895,6 +896,41 @@
+ 
+     def moe_sum(self, input: torch.Tensor, output: torch.Tensor) -> None:
+         raise NotImplementedError("LoRA is not supported for B12xExperts")
++
++
++_MOE_DUMP_DIR = __import__("os").environ.get("B12X_MOE_DUMP")
++_MOE_DUMP_COUNTS: dict[int, int] = {}
++
++
++def _maybe_dump_moe_routes(owner, hidden_states, topk_ids, topk_weights) -> None:
++    """Development-only: save live prefill routes (armed by <dir>/ARM)."""
++    if not _MOE_DUMP_DIR:
++        return
++    import os
++
++    try:
++        if (
++            hidden_states.shape[0] < 1024
++            or _is_current_stream_capturing()
++            or not os.path.exists(os.path.join(_MOE_DUMP_DIR, "ARM"))
++        ):
++            return
++        key = id(owner)
++        layer = getattr(owner, "_dump_layer_index", None)
++        if layer is None:
++            layer = len({k for k in _MOE_DUMP_COUNTS})
++            owner._dump_layer_index = layer
++        n = _MOE_DUMP_COUNTS.get(key, 0)
++        if n >= 8:
++            return
++        _MOE_DUMP_COUNTS[key] = n + 1
++        torch.save(
++            {"ids": topk_ids.detach().cpu(), "weights": topk_weights.detach().float().cpu(),
++             "tokens": int(hidden_states.shape[0])},
++            os.path.join(_MOE_DUMP_DIR, f"moe-l{layer:02d}-c{n}.pt"),
++        )
++    except Exception as exc:  # never break serving
++        print("moe route dump failed:", exc, flush=True)
+ 
+ 
+ def _register_b12x_moe_output_collective(

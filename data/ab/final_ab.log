@@ -1,0 +1,30 @@
+=== arm 1: original build (no switches, plain attention) 11:14:34 UTC
+launched plain 11:14:34 UTC
+HEALTHY 11:18:01 UTC (207 s)
+=== final-session-original 11:18:01
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          7094.18   
+Median TTFT (ms):                        7107.69   
+real-text prefill 14569 tokens: 6.60 s
+real-text prefill 14572 tokens: 6.61 s
+real-text prefill 14570 tokens: 6.63 s
+decode c=4 real text: per-request [26.8, 27.0, 29.3, 28.7] tokens/s, mean TTFT 2.82 s, MTP acceptance 55.2% (2.21 accepted per step)
+decode c=1 real text: 50.5 tokens/s (TTFT 0.06 s), MTP acceptance 52.7%
+final-session-original prompt_tokens 6976 prompt_logprobs ok greedy tokens 96
+stopped 11:19:42 UTC, MemAvailable 118 GiB
+=== arm 2: final build (patched attention + 4 switches) 11:19:42 UTC
+launched patched 11:19:42 UTC
+HEALTHY 11:23:03 UTC (201 s)
+=== final-session-all 11:23:03
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          5841.62   
+Median TTFT (ms):                        5854.96   
+real-text prefill 14573 tokens: 5.48 s
+real-text prefill 14567 tokens: 5.46 s
+real-text prefill 14573 tokens: 5.47 s
+decode c=4 real text: per-request [26.7, 26.3, 29.3, 26.9] tokens/s, mean TTFT 2.50 s, MTP acceptance 53.2% (2.13 accepted per step)
+decode c=1 real text: 51.0 tokens/s (TTFT 0.06 s), MTP acceptance 53.7%
+final-session-all prompt_tokens 6976 prompt_logprobs ok greedy tokens 96
+=== done 11:24:30 UTC; final build left running

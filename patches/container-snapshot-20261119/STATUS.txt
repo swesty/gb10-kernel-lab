@@ -1,0 +1,17 @@
+PATCHED ./b12x/_lib/dense_gemm.py
+same ./b12x/moe/_shared/kernels/dynamic.py
+PATCHED ./b12x/sequence/mtp_feedback/_cute_prefill.py
+PATCHED ./b12x/attention/paged/_selected_forward.py
+same ./b12x/attention/qsa/_sparse_gqa.py
+PATCHED ./vllm/v1/attention/backends/b12x_gdn_metadata.py
+same ./vllm/model_executor/kernels/linear/nvfp4/b12x.py
+same ./vllm/model_executor/layers/fused_moe/b12x.py
+PATCHED ./vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py
+PATCHED ./vllm/models/qwen4_exp/nvidia/hyperconnection.py
+PATCHED ./vllm/models/qwen4_exp/nvidia/b12x_qsa.py
+PATCHED ./vllm/models/qwen4_exp/nvidia/b12x_ple.py
+PATCHED ./b12x/sequence/_shared/disk_table.py
+PATCHED ./b12x/sequence/ple_embedding/_disk.py
+PATCHED ./vllm/models/qwen4_exp/nvidia/model_state.py
+PATCHED ./b12x/gemm/blockscaled/_preparation.py
+NEW ./vllm/model_executor/layers/mamba/gdn/gdn_norm_mxfp8.py

@@ -1,0 +1,10 @@
+=== b12x_dynamic_tile_mn-128x128 02:11:51
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          5997.22   
+Median TTFT (ms):                        6017.90   
+real-text prefill 14570 tokens: 5.77 s
+real-text prefill 14569 tokens: 5.77 s
+real-text prefill 14570 tokens: 5.78 s
+decode c=4 real text: per-request [23.9, 22.4, 26.2, 23.7] tokens/s, mean TTFT 2.67 s, MTP acceptance 54.7% (2.19 accepted per step)
+decode c=1 real text: 37.9 tokens/s (TTFT 0.06 s), MTP acceptance 48.3%

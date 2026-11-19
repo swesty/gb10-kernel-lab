@@ -1,0 +1,922 @@
+--- b12x-src/attention/paged/_selected_forward.py	2026-10-04 06:25:51
++++ patch/_selected_forward.py	2026-11-18 16:30:36
+@@ -9,6 +9,7 @@
+ 
+ from __future__ import annotations
+ 
++import os
+ from collections.abc import Callable
+ from threading import RLock
+ 
+@@ -42,8 +43,10 @@
+ from b12x._lib.compiler import run_compiled
+ from b12x._lib.compile_plan import compile_only_launches_enabled, program_keys, record_program
+ from b12x._lib.intrinsics import (
++    cp_async_bulk_g2s_mbar,
+     fp8x4_e4m3_to_bfloat2x2_native_sm120,
+     ld_global_nc_v4_u32,
++    ld_shared_v4_u32,
+     shared_ptr_to_u32,
+     st_shared_v4_u32,
+     warp_reduce,
+@@ -58,6 +61,13 @@
+ 
+ _THREADS = 128
+ _WARPS = _THREADS // 32
++# Experimental software pipeline for the FP8 shared-stride path (see _pipelined_step).
++_PIPELINE = os.environ.get("B12X_SELECTED_PIPELINE", "0") == "1"
++# Experimental TMA (cp.async.bulk + mbarrier) gather for the FP8 shared-stride path (see _tma_step).
++_TMA = os.environ.get("B12X_SELECTED_TMA", "0") == "1"
++# TMA mode for V: 1 = bulk-copy V too (4 x 64 B per row, in place); 0 = register prefetch for V.
++_TMA_V = os.environ.get("B12X_SELECTED_TMA_V", "0") == "1"
++_RING = 3  # position-base ring: tile i (mask), i+1 (gather in flight), i+2 (being resolved)
+ _LOG2_E = 1.4426950408889634
+ _LOCK = RLock()
+ _KERNEL_CACHE: dict[tuple[object, ...], Callable[..., None]] = {}
+@@ -171,6 +181,30 @@
+         self.pv_warps = self.qk_warps * 4
+         self.tile_m = self.qk_warps * 16
+         self.threads = self.pv_warps * 32
++        # Threads outside the QK warps resolve the next-next tile's positions while QK runs.
++        self.resolver_offset = self.qk_warps * 32
++        self.pipelined = bool(
++            _PIPELINE
++            and self.kv_is_fp8
++            and self.shared_cache_strides
++            and self.resolver_offset + self.tile_n <= self.threads
++        )
++        self.gather_iters = self.tile_n * (_HEAD_DIM // 16) // self.threads
++        # TMA mode: K(i+1) is bulk-copied as FP8 into the Q tile's smem (free after the first QK,
++        # Q then lives in registers); V(i+1) is bulk-copied as FP8 into the upper 64 B of each
++        # 128-byte segment of the BF16 V tile and expanded in place. Needs one copy lane per row.
++        self.tma = bool(
++            _TMA
++            and self.kv_is_fp8
++            and self.shared_cache_strides
++            and self.qk_warps == 1
++            and self.tile_n <= 32
++            and self.tile_n * _HEAD_DIM <= self.tile_m * _HEAD_DIM * 2
++        )
++        self.segments = self.tile_n * (_HEAD_DIM // 64)  # 64-column (128-byte BF16) segments per tile
++        self.tma_value = bool(_TMA_V)
++        if self.tma:
++            self.pipelined = False
+ 
+     def _tiled_mma_qk(self) -> cute.TiledMma:
+         return cute.make_tiled_mma(
+@@ -220,7 +254,633 @@
+         )
+         st_shared_v4_u32(destination0, y00, y01, y10, y11)
+         st_shared_v4_u32(destination1, y20, y21, y30, y31)
++
++    # ---- software pipeline (FP8, shared K/V strides) -------------------------------------
++    @cute.jit
++    def _resolve_tile_positions(
++        self,
++        tile: Int32,
++        slot: Int32,
++        column: Int32,
++        row: Int32,
++        kv_head: Int32,
++        request_id: Int64,
++        request_valid,
++        query_position: Int64,
++        block_table: cute.Pointer,
++        selected_positions: cute.Pointer,
++        base_ring: cute.Tensor,
++        num_cache_pages: Int64,
++        table_width: Int64,
++    ) -> None:
++        """Write tile's K/V row bases into ring slot; -1 marks invalid/padded columns."""
++        selected_column = tile * Int32(self.tile_n) + column
++        valid = request_valid & (selected_column < Int32(self.selection_width))
++        logical_position = Int64(-1)
++        if valid:
++            selected_offset = row.to(Int64) * Int64(self.selection_width) + selected_column.to(Int64)
++            logical_position = selected_positions[selected_offset].to(Int64)
++            valid = (logical_position >= Int64(0)) & (logical_position <= query_position)
++        physical_page = Int64(-1)
++        page_offset = Int64(0)
++        if valid:
++            logical_page = logical_position // Int64(self.page_size)
++            valid = logical_page < table_width
++            if valid:
++                table_offset = request_id * table_width + logical_page
++                physical_page = block_table[table_offset].to(Int64)
++                valid = (physical_page >= Int64(0)) & (physical_page < num_cache_pages)
++                page_offset = logical_position % Int64(self.page_size)
++        key_base = Int64(-1)
++        if valid:
++            key_base = (
++                physical_page * Int64(self.key_page_stride)
++                + page_offset * Int64(self.key_token_stride)
++                + kv_head.to(Int64) * Int64(self.key_head_stride)
++            )
++        base_ring[slot * Int32(self.tile_n) + column] = key_base
+ 
++    @cute.jit
++    def _issue_fp8_gather(
++        self,
++        key_cache: cute.Pointer,
++        value_cache: cute.Pointer,
++        base_ring: cute.Tensor,
++        slot: Int32,
++        thread: Int32,
++        staged: cute.Tensor,
++    ) -> None:
++        """Start the global loads for one tile into registers (no shared-memory traffic)."""
++        vectors_per_row = _HEAD_DIM // 16
++        for vector_iter in cutlass.range_constexpr(self.gather_iters):
++            linear_vector = thread + Int32(vector_iter * self.threads)
++            token = linear_vector // Int32(vectors_per_row)
++            dimension_base = (linear_vector % Int32(vectors_per_row)) * Int32(16)
++            base = Int64(base_ring[slot * Int32(self.tile_n) + token])
++            k0 = Uint32(0)
++            k1 = Uint32(0)
++            k2 = Uint32(0)
++            k3 = Uint32(0)
++            v0 = Uint32(0)
++            v1 = Uint32(0)
++            v2 = Uint32(0)
++            v3 = Uint32(0)
++            if base >= Int64(0):
++                k0, k1, k2, k3 = ld_global_nc_v4_u32(
++                    _pointer_as_int64(key_cache, base + dimension_base.to(Int64))
++                )
++                v0, v1, v2, v3 = ld_global_nc_v4_u32(
++                    _pointer_as_int64(value_cache, base + dimension_base.to(Int64))
++                )
++            staged[vector_iter * 8 + 0] = k0
++            staged[vector_iter * 8 + 1] = k1
++            staged[vector_iter * 8 + 2] = k2
++            staged[vector_iter * 8 + 3] = k3
++            staged[vector_iter * 8 + 4] = v0
++            staged[vector_iter * 8 + 5] = v1
++            staged[vector_iter * 8 + 6] = v2
++            staged[vector_iter * 8 + 7] = v3
++
++    @cute.jit
++    def _store_fp8_one(
++        self, destination: cute.Tensor, token: Int32, dimension_base: Int32, x0, x1, x2, x3
++    ) -> None:
++        y00, y01 = fp8x4_e4m3_to_bfloat2x2_native_sm120(x0)
++        y10, y11 = fp8x4_e4m3_to_bfloat2x2_native_sm120(x1)
++        y20, y21 = fp8x4_e4m3_to_bfloat2x2_native_sm120(x2)
++        y30, y31 = fp8x4_e4m3_to_bfloat2x2_native_sm120(x3)
++        destination0 = shared_ptr_to_u32(
++            destination.iterator + cute.crd2idx((token, dimension_base), destination.layout)
++        )
++        destination1 = shared_ptr_to_u32(
++            destination.iterator
++            + cute.crd2idx((token, dimension_base + Int32(8)), destination.layout)
++        )
++        st_shared_v4_u32(destination0, y00, y01, y10, y11)
++        st_shared_v4_u32(destination1, y20, y21, y30, y31)
++
++    @cute.jit
++    def _store_fp8_gather(
++        self,
++        staged: cute.Tensor,
++        shared_key: cute.Tensor,
++        shared_value: cute.Tensor,
++        thread: Int32,
++    ) -> None:
++        """Convert staged FP8 registers to BF16 and write the K/V tiles (same layout as before)."""
++        vectors_per_row = _HEAD_DIM // 16
++        for vector_iter in cutlass.range_constexpr(self.gather_iters):
++            linear_vector = thread + Int32(vector_iter * self.threads)
++            token = linear_vector // Int32(vectors_per_row)
++            dimension_base = (linear_vector % Int32(vectors_per_row)) * Int32(16)
++            self._store_fp8_one(
++                shared_key, token, dimension_base,
++                staged[vector_iter * 8 + 0], staged[vector_iter * 8 + 1],
++                staged[vector_iter * 8 + 2], staged[vector_iter * 8 + 3],
++            )
++            self._store_fp8_one(
++                shared_value, token, dimension_base,
++                staged[vector_iter * 8 + 4], staged[vector_iter * 8 + 5],
++                staged[vector_iter * 8 + 6], staged[vector_iter * 8 + 7],
++            )
++
++    @cute.jit
++    def _pipelined_step(
++        self,
++        local_tile: Int32,
++        split: Int32,
++        splits: Int32,
++        row: Int32,
++        kv_head: Int32,
++        request_id: Int64,
++        request_valid,
++        query_position: Int64,
++        key_cache: cute.Pointer,
++        value_cache: cute.Pointer,
++        block_table: cute.Pointer,
++        selected_positions: cute.Pointer,
++        base_ring: cute.Tensor,
++        staged: cute.Tensor,
++        shared_key: cute.Tensor,
++        shared_value: cute.Tensor,
++        shared_probability: cute.Tensor,
++        shared_row_scale: cute.Tensor,
++        num_cache_pages: Int64,
++        table_width: Int64,
++        thread: Int32,
++        tiled_mma_qk: cute.TiledMma,
++        tiled_mma_pv: cute.TiledMma,
++        register_query: cute.Tensor,
++        register_key: cute.Tensor,
++        register_probability: cute.Tensor,
++        register_value: cute.Tensor,
++        copy_query: cute.TiledCopy,
++        copy_key: cute.TiledCopy,
++        copy_probability: cute.TiledCopy,
++        copy_value: cute.TiledCopy,
++        copy_source_query: cute.Tensor,
++        copy_source_key: cute.Tensor,
++        copy_source_probability: cute.Tensor,
++        copy_source_value: cute.Tensor,
++        accumulator_output: cute.Tensor,
++        softmax: Softmax,
++        is_first: cutlass.Constexpr,
++    ) -> None:
++        """One pipelined tile. Entry invariant: K/V(i) in smem, ring slots i and i+1 resolved.
++
++        1. all threads issue global loads for tile i+1 into registers
++        2. QK warps: scores, mask (ring slot i), online softmax, P -> smem
++           resolver threads: positions of tile i+2 -> ring slot i+2
++        3. sync; all warps: P @ V(i)
++        4. sync; all threads: convert + store tile i+1 into the K/V tiles; sync
++        """
++        slot = local_tile % Int32(_RING)
++        next_slot = (local_tile + Int32(1)) % Int32(_RING)
++        next_next_slot = (local_tile + Int32(2)) % Int32(_RING)
++
++        self._issue_fp8_gather(key_cache, value_cache, base_ring, next_slot, thread, staged)
++
++        if thread < Int32(self.qk_warps * 32):
++            accumulator_score = cute.make_rmem_tensor(
++                tiled_mma_qk.get_slice(thread).partition_shape_C((self.tile_m, self.tile_n)),
++                Float32,
++            )
++            accumulator_score.fill(0.0)
++            warp_mma_gemm(
++                tiled_mma_qk,
++                accumulator_score,
++                register_query,
++                register_key,
++                copy_source_query,
++                copy_source_key,
++                copy_query,
++                copy_key,
++                A_in_regs=not is_first,
++            )
++            score_mn = layout_utils.reshape_acc_to_mn(accumulator_score)
++            score_coordinates = layout_utils.reshape_acc_to_mn(
++                tiled_mma_qk.get_slice(thread).partition_C(
++                    cute.make_identity_tensor((self.tile_m, self.tile_n))
++                )
++            )
++            for m in cutlass.range_constexpr(cute.size(score_mn.shape[0])):
++                for n in cutlass.range_constexpr(cute.size(score_mn.shape[1])):
++                    coordinate = score_coordinates[m, n]
++                    if (coordinate[0] >= Int32(self.heads_per_kv)) | (
++                        Int64(base_ring[slot * Int32(self.tile_n) + coordinate[1]]) < Int64(0)
++                    ):
++                        score_mn[m, n] = -Float32.inf
++            row_scale = softmax.online_softmax(accumulator_score, is_first=is_first, check_inf=True)
++            for m in cutlass.range_constexpr(cute.size(score_mn.shape[0])):
++                for n in cutlass.range_constexpr(cute.size(score_mn.shape[1])):
++                    coordinate = score_coordinates[m, n]
++                    shared_probability[coordinate[0], coordinate[1]] = BFloat16(score_mn[m, n])
++                if score_coordinates[m, 0][1] == Int32(0):
++                    shared_row_scale[score_coordinates[m, 0][0]] = row_scale[m]
++        else:
++            column = thread - Int32(self.resolver_offset)
++            if column < Int32(self.tile_n):
++                self._resolve_tile_positions(
++                    split + (local_tile + Int32(2)) * splits,
++                    next_next_slot,
++                    column,
++                    row,
++                    kv_head,
++                    request_id,
++                    request_valid,
++                    query_position,
++                    block_table,
++                    selected_positions,
++                    base_ring,
++                    num_cache_pages,
++                    table_width,
++                )
++        cute.arch.sync_threads()
++
++        output_mn = layout_utils.reshape_acc_to_mn(accumulator_output)
++        output_coordinates = layout_utils.reshape_acc_to_mn(
++            tiled_mma_pv.get_slice(thread).partition_C(
++                cute.make_identity_tensor((self.tile_m, _HEAD_DIM))
++            )
++        )
++        if const_expr(not is_first):
++            for m in cutlass.range_constexpr(cute.size(output_mn.shape[0])):
++                scale = Float32(shared_row_scale[output_coordinates[m, 0][0]])
++                output_mn[m, None].store(output_mn[m, None].load() * scale)
++        warp_mma_gemm(
++            tiled_mma_pv,
++            accumulator_output,
++            register_probability,
++            register_value,
++            copy_source_probability,
++            copy_source_value,
++            copy_probability,
++            copy_value,
++        )
++        cute.arch.sync_threads()
++        self._store_fp8_gather(staged, shared_key, shared_value, thread)
++        cute.arch.sync_threads()
++
++    # ---- TMA (cp.async.bulk) gather -------------------------------------------------------
++    @cute.jit
++    def _segment_base_u32(self, tile_tensor: cute.Tensor, row: Int32, block: Int32) -> Int32:
++        """Byte address of the 128-byte smem segment holding BF16 columns [64*block, 64*block+64) of row.
++
++        The SW128 atom is 8 rows x 128 bytes, so each (row, block) owns one aligned 128-byte segment."""
++        address = shared_ptr_to_u32(
++            tile_tensor.iterator + cute.crd2idx((row, block * Int32(64)), tile_tensor.layout)
++        )
++        return address & Int32(~127)
++
++    @cute.jit
++    def _chunk_u32(self, tile_tensor: cute.Tensor, row: Int32, column: Int32) -> Int32:
++        return shared_ptr_to_u32(
++            tile_tensor.iterator + cute.crd2idx((row, column), tile_tensor.layout)
++        )
++
++    @cute.jit
++    def _tma_issue_key(
++        self,
++        key_cache: cute.Pointer,
++        base_ring: cute.Tensor,
++        slot: Int32,
++        lane: Int32,
++        stage_u32: Int32,
++        mbar_key: cute.Pointer,
++    ) -> None:
++        """One lane per row: bulk-copy the row's 256 FP8 bytes into the staging rows (Q smem)."""
++        base = Int64(-1)
++        if lane < Int32(self.tile_n):
++            base = Int64(base_ring[slot * Int32(self.tile_n) + lane])
++        tx = Int32(0)
++        if base >= Int64(0):
++            tx = Int32(_HEAD_DIM)
++        cute.arch.mbarrier_arrive_and_expect_tx(mbar_key, tx)
++        if base >= Int64(0):
++            cp_async_bulk_g2s_mbar(
++                stage_u32 + lane * Int32(_HEAD_DIM),
++                _pointer_as_int64(key_cache, base),
++                Int32(_HEAD_DIM),
++                shared_ptr_to_u32(mbar_key),
++            )
++
++    @cute.jit
++    def _tma_issue_value(
++        self,
++        value_cache: cute.Pointer,
++        base_ring: cute.Tensor,
++        slot: Int32,
++        lane: Int32,
++        shared_value: cute.Tensor,
++        mbar_value: cute.Pointer,
++    ) -> None:
++        """One lane per row: four 64-byte bulk copies into the upper halves of the row's segments."""
++        base = Int64(-1)
++        if lane < Int32(self.tile_n):
++            base = Int64(base_ring[slot * Int32(self.tile_n) + lane])
++        tx = Int32(0)
++        if base >= Int64(0):
++            tx = Int32(_HEAD_DIM)
++        cute.arch.mbarrier_arrive_and_expect_tx(mbar_value, tx)
++        if base >= Int64(0):
++            for block in cutlass.range_constexpr(_HEAD_DIM // 64):
++                cp_async_bulk_g2s_mbar(
++                    self._segment_base_u32(shared_value, lane, Int32(block)) + Int32(64),
++                    _pointer_as_int64(value_cache, base + Int64(block * 64)),
++                    Int32(64),
++                    shared_ptr_to_u32(mbar_value),
++                )
++
++    @cute.jit
++    def _issue_value_prefetch(
++        self, value_cache: cute.Pointer, base_ring: cute.Tensor, slot: Int32, thread: Int32,
++        staged_v: cute.Tensor,
++    ) -> None:
++        """Register prefetch of one tile's V rows (the pipelined path, V only)."""
++        vectors_per_row = _HEAD_DIM // 16
++        for vector_iter in cutlass.range_constexpr(self.gather_iters):
++            linear_vector = thread + Int32(vector_iter * self.threads)
++            token = linear_vector // Int32(vectors_per_row)
++            dimension_base = (linear_vector % Int32(vectors_per_row)) * Int32(16)
++            base = Int64(base_ring[slot * Int32(self.tile_n) + token])
++            v0 = Uint32(0)
++            v1 = Uint32(0)
++            v2 = Uint32(0)
++            v3 = Uint32(0)
++            if base >= Int64(0):
++                v0, v1, v2, v3 = ld_global_nc_v4_u32(
++                    _pointer_as_int64(value_cache, base + dimension_base.to(Int64))
++                )
++            staged_v[vector_iter * 4 + 0] = v0
++            staged_v[vector_iter * 4 + 1] = v1
++            staged_v[vector_iter * 4 + 2] = v2
++            staged_v[vector_iter * 4 + 3] = v3
++
++    @cute.jit
++    def _store_value_prefetch(self, staged_v: cute.Tensor, shared_value: cute.Tensor, thread: Int32) -> None:
++        vectors_per_row = _HEAD_DIM // 16
++        for vector_iter in cutlass.range_constexpr(self.gather_iters):
++            linear_vector = thread + Int32(vector_iter * self.threads)
++            token = linear_vector // Int32(vectors_per_row)
++            dimension_base = (linear_vector % Int32(vectors_per_row)) * Int32(16)
++            self._store_fp8_one(
++                shared_value, token, dimension_base,
++                staged_v[vector_iter * 4 + 0], staged_v[vector_iter * 4 + 1],
++                staged_v[vector_iter * 4 + 2], staged_v[vector_iter * 4 + 3],
++            )
++
++    @cute.jit
++    def _write_bf16_pair(self, tile_tensor, row, column, x0, x1, x2, x3) -> None:
++        """Convert 16 FP8 values (x0..x3) and store them as BF16 columns [column, column+16)."""
++        y00, y01 = fp8x4_e4m3_to_bfloat2x2_native_sm120(x0)
++        y10, y11 = fp8x4_e4m3_to_bfloat2x2_native_sm120(x1)
++        y20, y21 = fp8x4_e4m3_to_bfloat2x2_native_sm120(x2)
++        y30, y31 = fp8x4_e4m3_to_bfloat2x2_native_sm120(x3)
++        st_shared_v4_u32(self._chunk_u32(tile_tensor, row, column), y00, y01, y10, y11)
++        st_shared_v4_u32(self._chunk_u32(tile_tensor, row, column + Int32(8)), y20, y21, y30, y31)
++
++    @cute.jit
++    def _segment_of(self, segment: Int32):
++        """Map a segment id to (row, block): 8 consecutive ids = 8 rows of one atom, same block."""
++        row = (segment % Int32(8)) + Int32(8) * (segment // Int32(32))
++        block = (segment // Int32(8)) % Int32(4)
++        return row, block
++
++    @cute.jit
++    def _tma_convert_key(
++        self,
++        base_ring: cute.Tensor,
++        slot: Int32,
++        thread: Int32,
++        stage_u32: Int32,
++        shared_key: cute.Tensor,
++    ) -> None:
++        """All threads: FP8 staging rows -> swizzled BF16 K tile. Rotated chunk order per lane keeps
++        the 16-byte staging reads at most 2-way bank-conflicted; BF16 stores are conflict-free."""
++        for it in cutlass.range_constexpr((self.segments + self.threads - 1) // self.threads):
++            segment = thread + Int32(it * self.threads)
++            if segment < Int32(self.segments):
++                row, block = self._segment_of(segment)
++                valid = Int64(base_ring[slot * Int32(self.tile_n) + row]) >= Int64(0)
++                rotation = thread % Int32(4)
++                for i in cutlass.range_constexpr(4):
++                    q = (Int32(i) + rotation) % Int32(4)
++                    column = block * Int32(64) + q * Int32(16)
++                    x0 = Uint32(0)
++                    x1 = Uint32(0)
++                    x2 = Uint32(0)
++                    x3 = Uint32(0)
++                    if valid:
++                        x0, x1, x2, x3 = ld_shared_v4_u32(
++                            stage_u32 + row * Int32(_HEAD_DIM) + block * Int32(64) + q * Int32(16)
++                        )
++                    self._write_bf16_pair(shared_key, row, column, x0, x1, x2, x3)
++
++    @cute.jit
++    def _tma_convert_value(
++        self,
++        base_ring: cute.Tensor,
++        slot: Int32,
++        worker: Int32,
++        workers: cutlass.Constexpr,
++        shared_value: cute.Tensor,
++    ) -> None:
++        """Expand each segment's FP8 upper half to BF16 in place: read all four FP8 chunks first,
++        then write the eight BF16 chunks (one thread owns a segment, so there is no cross-thread race)."""
++        for it in cutlass.range_constexpr((self.segments + workers - 1) // workers):
++            segment = worker + Int32(it * workers)
++            if segment < Int32(self.segments):
++                row, block = self._segment_of(segment)
++                valid = Int64(base_ring[slot * Int32(self.tile_n) + row]) >= Int64(0)
++                fp8_u32 = self._segment_base_u32(shared_value, row, block) + Int32(64)
++                rotation = worker % Int32(4)
++                staged = cute.make_rmem_tensor((16,), Uint32)
++                for i in cutlass.range_constexpr(4):
++                    q = (Int32(i) + rotation) % Int32(4)
++                    x0 = Uint32(0)
++                    x1 = Uint32(0)
++                    x2 = Uint32(0)
++                    x3 = Uint32(0)
++                    if valid:
++                        x0, x1, x2, x3 = ld_shared_v4_u32(fp8_u32 + q * Int32(16))
++                    staged[i * 4 + 0] = x0
++                    staged[i * 4 + 1] = x1
++                    staged[i * 4 + 2] = x2
++                    staged[i * 4 + 3] = x3
++                for i in cutlass.range_constexpr(4):
++                    q = (Int32(i) + rotation) % Int32(4)
++                    self._write_bf16_pair(
++                        shared_value, row, block * Int32(64) + q * Int32(16),
++                        staged[i * 4 + 0], staged[i * 4 + 1], staged[i * 4 + 2], staged[i * 4 + 3],
++                    )
++
++    @cute.jit
++    def _tma_step(
++        self,
++        local_tile: Int32,
++        split: Int32,
++        splits: Int32,
++        row: Int32,
++        kv_head: Int32,
++        request_id: Int64,
++        request_valid,
++        query_position: Int64,
++        key_cache: cute.Pointer,
++        value_cache: cute.Pointer,
++        block_table: cute.Pointer,
++        selected_positions: cute.Pointer,
++        base_ring: cute.Tensor,
++        stage_u32: Int32,
++        mbar_key: cute.Pointer,
++        mbar_value: cute.Pointer,
++        staged_v: cute.Tensor,
++        shared_key: cute.Tensor,
++        shared_value: cute.Tensor,
++        shared_probability: cute.Tensor,
++        shared_row_scale: cute.Tensor,
++        num_cache_pages: Int64,
++        table_width: Int64,
++        thread: Int32,
++        tiled_mma_qk: cute.TiledMma,
++        tiled_mma_pv: cute.TiledMma,
++        register_query: cute.Tensor,
++        register_key: cute.Tensor,
++        register_probability: cute.Tensor,
++        register_value: cute.Tensor,
++        copy_query: cute.TiledCopy,
++        copy_key: cute.TiledCopy,
++        copy_probability: cute.TiledCopy,
++        copy_value: cute.TiledCopy,
++        copy_source_query: cute.Tensor,
++        copy_source_key: cute.Tensor,
++        copy_source_probability: cute.Tensor,
++        copy_source_value: cute.Tensor,
++        accumulator_output: cute.Tensor,
++        softmax: Softmax,
++        is_first: cutlass.Constexpr,
++    ) -> None:
++        """One TMA tile. Tile 0 (is_first) arrives via the synchronous prologue; tiles >= 1 arrive
++        through two mbarriers whose n-th completion (n >= 1) is tile n, so wait parity = (n-1) & 1.
++
++        a. (i>=1) all: wait K, convert staging -> K tile; sync
++        b. (i>=1) copy warp: issue K(i+1) into the staging rows
++        c. warp 0: QK(i), softmax, P -> smem.  warps 1..: (i>=1) wait V, expand V in place;
++           resolver lanes: positions of tile i+2
++        d. sync; (i==0) copy warp issues K(1) now that Q has left smem; all: PV(i); sync
++        e. copy warp: issue V(i+1) into the V tile's upper halves
++        """
++        slot = local_tile % Int32(_RING)
++        next_slot = (local_tile + Int32(1)) % Int32(_RING)
++        next_next_slot = (local_tile + Int32(2)) % Int32(_RING)
++        parity = (local_tile + Int32(1)) % Int32(2)  # == (local_tile - 1) & 1 for local_tile >= 1
++        copy_warp = thread // Int32(32) == Int32(1)
++        lane = thread % Int32(32)
++
++        if const_expr(not is_first):
++            cute.arch.mbarrier_wait(mbar_key, parity)
++            self._tma_convert_key(base_ring, slot, thread, stage_u32, shared_key)
++            cute.arch.sync_threads()
++            if copy_warp:
++                cute.arch.fence_proxy("async.shared", space="cta")
++                self._tma_issue_key(key_cache, base_ring, next_slot, lane, stage_u32, mbar_key)
++        if const_expr(not self.tma_value):
++            self._issue_value_prefetch(value_cache, base_ring, next_slot, thread, staged_v)
++
++        if thread < Int32(32):
++            accumulator_score = cute.make_rmem_tensor(
++                tiled_mma_qk.get_slice(thread).partition_shape_C((self.tile_m, self.tile_n)),
++                Float32,
++            )
++            accumulator_score.fill(0.0)
++            warp_mma_gemm(
++                tiled_mma_qk,
++                accumulator_score,
++                register_query,
++                register_key,
++                copy_source_query,
++                copy_source_key,
++                copy_query,
++                copy_key,
++                A_in_regs=not is_first,
++            )
++            score_mn = layout_utils.reshape_acc_to_mn(accumulator_score)
++            score_coordinates = layout_utils.reshape_acc_to_mn(
++                tiled_mma_qk.get_slice(thread).partition_C(
++                    cute.make_identity_tensor((self.tile_m, self.tile_n))
++                )
++            )
++            for m in cutlass.range_constexpr(cute.size(score_mn.shape[0])):
++                for n in cutlass.range_constexpr(cute.size(score_mn.shape[1])):
++                    coordinate = score_coordinates[m, n]
++                    if (coordinate[0] >= Int32(self.heads_per_kv)) | (
++                        Int64(base_ring[slot * Int32(self.tile_n) + coordinate[1]]) < Int64(0)
++                    ):
++                        score_mn[m, n] = -Float32.inf
++            row_scale = softmax.online_softmax(accumulator_score, is_first=is_first, check_inf=True)
++            for m in cutlass.range_constexpr(cute.size(score_mn.shape[0])):
++                for n in cutlass.range_constexpr(cute.size(score_mn.shape[1])):
++                    coordinate = score_coordinates[m, n]
++                    shared_probability[coordinate[0], coordinate[1]] = BFloat16(score_mn[m, n])
++                if score_coordinates[m, 0][1] == Int32(0):
++                    shared_row_scale[score_coordinates[m, 0][0]] = row_scale[m]
++        else:
++            if const_expr(not is_first and self.tma_value):
++                cute.arch.mbarrier_wait(mbar_value, parity)
++                self._tma_convert_value(
++                    base_ring, slot, thread - Int32(32), self.threads - 32, shared_value
++                )
++            column = thread - Int32(self.resolver_offset)
++            if column < Int32(self.tile_n):
++                self._resolve_tile_positions(
++                    split + (local_tile + Int32(2)) * splits,
++                    next_next_slot,
++                    column,
++                    row,
++                    kv_head,
++                    request_id,
++                    request_valid,
++                    query_position,
++                    block_table,
++                    selected_positions,
++                    base_ring,
++                    num_cache_pages,
++                    table_width,
++                )
++        cute.arch.sync_threads()
++
++        if const_expr(is_first):
++            if copy_warp:
++                cute.arch.fence_proxy("async.shared", space="cta")
++                self._tma_issue_key(key_cache, base_ring, next_slot, lane, stage_u32, mbar_key)
++
++        output_mn = layout_utils.reshape_acc_to_mn(accumulator_output)
++        output_coordinates = layout_utils.reshape_acc_to_mn(
++            tiled_mma_pv.get_slice(thread).partition_C(
++                cute.make_identity_tensor((self.tile_m, _HEAD_DIM))
++            )
++        )
++        if const_expr(not is_first):
++            for m in cutlass.range_constexpr(cute.size(output_mn.shape[0])):
++                scale = Float32(shared_row_scale[output_coordinates[m, 0][0]])
++                output_mn[m, None].store(output_mn[m, None].load() * scale)
++        warp_mma_gemm(
++            tiled_mma_pv,
++            accumulator_output,
++            register_probability,
++            register_value,
++            copy_source_probability,
++            copy_source_value,
++            copy_probability,
++            copy_value,
++        )
++        cute.arch.sync_threads()
++        if const_expr(self.tma_value):
++            if copy_warp:
++                cute.arch.fence_proxy("async.shared", space="cta")
++                self._tma_issue_value(value_cache, base_ring, next_slot, lane, shared_value, mbar_value)
++        else:
++            self._store_value_prefetch(staged_v, shared_value, thread)
++
+     def _shared_layouts(
+         self,
+     ) -> tuple[
+@@ -642,7 +1302,17 @@
+         value_bases = allocator.allocate_tensor(
+             element_type=Int64,
+             layout=cute.make_layout((self.tile_n,), stride=(1,)),
++            byte_alignment=16,
++        )
++        base_ring = allocator.allocate_tensor(
++            element_type=Int64,
++            layout=cute.make_layout((_RING * self.tile_n,), stride=(1,)),
+             byte_alignment=16,
++        )
++        mbarriers = allocator.allocate_tensor(
++            element_type=Int64,
++            layout=cute.make_layout((2,), stride=(1,)),
++            byte_alignment=8,
+         )
+ 
+         query_element = thread
+@@ -722,49 +1392,101 @@
+ 
+         tile_count = Int32((self.selection_width + self.tile_n - 1) // self.tile_n)
+         tiles_per_split = (tile_count - split + splits - Int32(1)) // splits
+-        self._mma_selected_tile(
+-            split,
+-            row,
+-            kv_head,
+-            request_id,
+-            request_valid,
+-            query_position,
+-            key_cache,
+-            value_cache,
+-            block_table,
+-            selected_positions,
+-            key_bases,
+-            value_bases,
+-            shared_query,
+-            shared_key,
+-            shared_value,
+-            shared_probability,
+-            shared_row_scale,
+-            num_cache_pages,
+-            table_width,
+-            thread,
+-            tiled_mma_qk,
+-            tiled_mma_pv,
+-            register_query,
+-            register_key,
+-            register_probability,
+-            register_value,
+-            copy_query,
+-            copy_key,
+-            copy_probability,
+-            copy_value,
+-            copy_source_query,
+-            copy_source_key,
+-            copy_source_probability,
+-            copy_source_value,
+-            accumulator_output,
+-            softmax,
+-            is_first=True,
+-        )
+-        for local_tile in cutlass.range(tiles_per_split - Int32(1), unroll=1):
+-            tile = split + (Int32(local_tile) + Int32(1)) * splits
++        if const_expr(self.tma):
++            mbar_key = mbarriers.iterator
++            mbar_value = mbarriers.iterator + 1
++            stage_u32 = shared_ptr_to_u32(shared_query.iterator)
++            if thread == Int32(0):
++                cute.arch.mbarrier_init(mbar_key, Int32(32))
++                cute.arch.mbarrier_init(mbar_value, Int32(32))
++                cute.arch.mbarrier_init_fence()
++            # Prologue: resolve tiles 0 and 1; tile 0 through the synchronous gather.
++            if thread < Int32(self.tile_n):
++                self._resolve_tile_positions(
++                    split, Int32(0), thread, row, kv_head, request_id, request_valid,
++                    query_position, block_table, selected_positions, base_ring,
++                    num_cache_pages, table_width,
++                )
++                self._resolve_tile_positions(
++                    split + splits, Int32(1), thread, row, kv_head, request_id, request_valid,
++                    query_position, block_table, selected_positions, base_ring,
++                    num_cache_pages, table_width,
++                )
++            cute.arch.sync_threads()
++            staged0 = cute.make_rmem_tensor((self.gather_iters * 8,), Uint32)
++            staged_v = cute.make_rmem_tensor((self.gather_iters * 4,), Uint32)
++            self._issue_fp8_gather(key_cache, value_cache, base_ring, Int32(0), thread, staged0)
++            self._store_fp8_gather(staged0, shared_key, shared_value, thread)
++            cute.arch.sync_threads()
++            self._tma_step(
++                Int32(0), split, splits, row, kv_head, request_id, request_valid, query_position,
++                key_cache, value_cache, block_table, selected_positions, base_ring, stage_u32,
++                mbar_key, mbar_value, staged_v, shared_key, shared_value, shared_probability,
++                shared_row_scale, num_cache_pages, table_width, thread, tiled_mma_qk,
++                tiled_mma_pv, register_query, register_key, register_probability, register_value,
++                copy_query, copy_key, copy_probability, copy_value, copy_source_query,
++                copy_source_key, copy_source_probability, copy_source_value, accumulator_output,
++                softmax, is_first=True,
++            )
++            for local_tile in cutlass.range(tiles_per_split - Int32(1), unroll=1):
++                self._tma_step(
++                    Int32(local_tile) + Int32(1), split, splits, row, kv_head, request_id,
++                    request_valid, query_position, key_cache, value_cache, block_table,
++                    selected_positions, base_ring, stage_u32, mbar_key, mbar_value, staged_v, shared_key,
++                    shared_value, shared_probability, shared_row_scale, num_cache_pages,
++                    table_width, thread, tiled_mma_qk, tiled_mma_pv, register_query, register_key,
++                    register_probability, register_value, copy_query, copy_key, copy_probability,
++                    copy_value, copy_source_query, copy_source_key, copy_source_probability,
++                    copy_source_value, accumulator_output, softmax, is_first=False,
++                )
++            # Drain: the copies issued for tile tiles_per_split cover only invalid rows (0 bytes),
++            # but wait on both barriers so no async write can land after the CTA moves on.
++            cute.arch.mbarrier_wait(mbar_key, (tiles_per_split + Int32(1)) % Int32(2))
++            if const_expr(self.tma_value):
++                cute.arch.mbarrier_wait(mbar_value, (tiles_per_split + Int32(1)) % Int32(2))
++        elif const_expr(self.pipelined):
++            staged = cute.make_rmem_tensor((self.gather_iters * 8,), Uint32)
++            # Prologue: resolve tiles 0 and 1, gather + store tile 0.
++            if thread < Int32(self.tile_n):
++                self._resolve_tile_positions(
++                    split, Int32(0), thread, row, kv_head, request_id, request_valid,
++                    query_position, block_table, selected_positions, base_ring,
++                    num_cache_pages, table_width,
++                )
++                self._resolve_tile_positions(
++                    split + splits, Int32(1), thread, row, kv_head, request_id, request_valid,
++                    query_position, block_table, selected_positions, base_ring,
++                    num_cache_pages, table_width,
++                )
++            cute.arch.sync_threads()
++            self._issue_fp8_gather(key_cache, value_cache, base_ring, Int32(0), thread, staged)
++            self._store_fp8_gather(staged, shared_key, shared_value, thread)
++            cute.arch.sync_threads()
++            self._pipelined_step(
++                Int32(0), split, splits, row, kv_head, request_id, request_valid, query_position,
++                key_cache, value_cache, block_table, selected_positions, base_ring, staged,
++                shared_key, shared_value, shared_probability, shared_row_scale,
++                num_cache_pages, table_width, thread, tiled_mma_qk, tiled_mma_pv,
++                register_query, register_key, register_probability, register_value,
++                copy_query, copy_key, copy_probability, copy_value,
++                copy_source_query, copy_source_key, copy_source_probability, copy_source_value,
++                accumulator_output, softmax, is_first=True,
++            )
++            for local_tile in cutlass.range(tiles_per_split - Int32(1), unroll=1):
++                self._pipelined_step(
++                    Int32(local_tile) + Int32(1), split, splits, row, kv_head, request_id,
++                    request_valid, query_position, key_cache, value_cache, block_table,
++                    selected_positions, base_ring, staged, shared_key, shared_value,
++                    shared_probability, shared_row_scale, num_cache_pages, table_width, thread,
++                    tiled_mma_qk, tiled_mma_pv, register_query, register_key,
++                    register_probability, register_value, copy_query, copy_key,
++                    copy_probability, copy_value, copy_source_query, copy_source_key,
++                    copy_source_probability, copy_source_value, accumulator_output, softmax,
++                    is_first=False,
++                )
++        else:
+             self._mma_selected_tile(
+-                tile,
++                split,
+                 row,
+                 kv_head,
+                 request_id,
+@@ -800,8 +1522,49 @@
+                 copy_source_value,
+                 accumulator_output,
+                 softmax,
+-                is_first=False,
++                is_first=True,
+             )
++            for local_tile in cutlass.range(tiles_per_split - Int32(1), unroll=1):
++                tile = split + (Int32(local_tile) + Int32(1)) * splits
++                self._mma_selected_tile(
++                    tile,
++                    row,
++                    kv_head,
++                    request_id,
++                    request_valid,
++                    query_position,
++                    key_cache,
++                    value_cache,
++                    block_table,
++                    selected_positions,
++                    key_bases,
++                    value_bases,
++                    shared_query,
++                    shared_key,
++                    shared_value,
++                    shared_probability,
++                    shared_row_scale,
++                    num_cache_pages,
++                    table_width,
++                    thread,
++                    tiled_mma_qk,
++                    tiled_mma_pv,
++                    register_query,
++                    register_key,
++                    register_probability,
++                    register_value,
++                    copy_query,
++                    copy_key,
++                    copy_probability,
++                    copy_value,
++                    copy_source_query,
++                    copy_source_key,
++                    copy_source_probability,
++                    copy_source_value,
++                    accumulator_output,
++                    softmax,
++                    is_first=False,
++                )
+ 
+         if thread < Int32(self.qk_warps * 32):
+             output_scale = softmax.finalize()
+@@ -1280,7 +2043,7 @@
+                 current_cuda_stream(),
+                 compile_spec=KernelCompileSpec.from_key(
+                     "attention.paged.selected_forward",
+-                    4,
++                    (2104 if _TMA_V else 2004) if _TMA else 1004 if _PIPELINE else 4,
+                     (
+                         q_heads,
+                         kv_heads,

@@ -1,0 +1,41 @@
+Raw diagnostic outputs, spark-5 / vllm_qwen38_next, 2026-11-19 (engine idle: num_requests_running 0, token counters unchanged)
+
+== Recipe check (hf_quant_config.json of local-inference-lab/Qwen3.8-Flash-Next-NVFP4, quant_algo MIXED_PRECISION)
+linear_attn.in_proj_qkv / in_proj_z / in_proj_a / in_proj_b / out_proj : MXFP8 group 32 (36 layers)
+mlp.shared_expert.gate_proj / up_proj / down_proj                      : MXFP8 group 32 (48 layers)
+self_attn.q/k/v/o_proj, indexer.index_qk_proj                          : MXFP8 group 32 (12 layers)
+mlp.experts (routed)                                                    : NVFP4 group 16
+Trace corroboration: live _quantize grids (4096,5),(4096,12),(4096,2) = cdiv(K/32,16) for K=2560/6144/640 (GROUP=32,
+i.e. MXFP8); NVFP4 would give (4096,10),(4096,24),(4096,3). GEMM kernel names carry Valuetypef8E4M3FN operands.
+
+== Live trace (D-prefill-16k-best.nsys-rep), one GDN layer, 4096-row chunk (no concurrent kernels on other streams)
+ 138.7 us _quantize (4096,5)  -> 2407.2 us DenseGemm grid(1,1,48) blk288   [in_proj_qkvz]
+ 147.0 us DenseGemm grid(256,1,1) blk96 (no quantize before it)            [in_proj_ba: different (A16-style) kernel]
+ 398.2 us _quantize (4096,12) -> 1388.6 us DenseGemm grid(1,1,48)          [out_proj]
+ 108.0 us _quantize (4096,5)  ->  182.0 us DenseGemm                       [shared expert gate+up]
+  20.9 us _quantize (4096,2)  ->  140.5 us DenseGemm                       [shared expert down]
+Overlap analysis over all 4096-row quantize->GEMM pairs: 0 us overlapped by kernels on other streams.
+
+== Allocation/placement dependence (dense_gemm_alloc_variance.py out 6 5): same kernel (default 64x128 bk128), same data,
+   fresh copies of W (6) x A (2) at different addresses, cold L2, SM clock constant 2411 MHz
+W0 A0 1620 | W0 A1 2029 | W1 A0 1692 | W1 A1 1291 | W2 A0 1601 | W2 A1 2048
+W3 A0 1486 | W3 A1 1438 | W4 A0 1527 | W4 A1 1252 | W5 A0 1524 | W5 A1 1986   (median us of 5)
+-> 1.25-2.05 ms depending on the A/W address pair; disappears with N-major rasterization (918-939 us across 6 placements).
+
+== Path check (dense_gemm_path_check.py): lowering of live api.mm == lowering of direct dense_gemm (no differences)
+qkvz: live api.mm GEMM 2158 us | dense_gemm on live workspace operands 2230-2286 | on harness operands 2230-2515
+down: live api.mm GEMM 121 us  | dense_gemm 150-152 (both operand sets)
+-> the live path is faster for small-A shapes because the GEMM runs right after _quantize wrote A (A partly L2-resident);
+   the sweep flushes L2 before every launch (pessimistic for A). For out_proj (A = 25 MB > L2) cold ~= live.
+Note: the first ("default") entry of the stock qkvz sweep process read 4319 us while the identical explicit config
+(64x128 bk128 lmu=1) in the same process read 2234 us; the explicit entry is used as the qkvz baseline.
+
+== Nsight Compute, default out_proj MXFP8 kernel (ncu --set full, clocks locked by ncu at 2.13 GHz) -- see
+   ncu_out_default_details.txt and ../ncu/dense-mxfp8-out_proj-default.ncu-rep
+duration 1274 us; grid 48 x 288 threads, 1 CTA/SM (occupancy 18.75% theoretical), 130 regs, 95,232 B dyn smem
+tensor pipe active 48.0% of peak; issue slots busy 16%; no-eligible 83%
+L2 hit 84.4%; L2 throughput 63.7%; L2 lookup misses 7.83 M sectors = 250 MB DRAM reads (ideal A+W once ~41 MB)
+  -> ~197 GB/s from DRAM over the kernel, i.e. at the measured DRAM ceiling
+stall samples: sleeping 65.2k (mbarrier wait for TMA data), math_pipe_throttle 26.7k, wait 20.1k, selected 9.2k,
+  long_scoreboard 5.7k, short_scoreboard 3.1k
+Interpretation: M-major raster re-streams A (25 MB, does not fit L2) once per N-tile column -> DRAM-bound.

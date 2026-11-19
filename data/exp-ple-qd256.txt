@@ -1,0 +1,10 @@
+=== ple-qd256 13:03:09
+--- random 16K prefill x4
+Failed requests:                         0         
+Mean TTFT (ms):                          5329.65   
+Median TTFT (ms):                        5348.09   
+real-text prefill 14572 tokens: 5.10 s
+real-text prefill 14568 tokens: 5.09 s
+real-text prefill 14568 tokens: 5.10 s
+decode c=4 real text: per-request [26.5, 26.5, 29.8, 27.0] tokens/s, mean TTFT 2.32 s, MTP acceptance 53.2% (2.13 accepted per step)
+decode c=1 real text: 48.6 tokens/s (TTFT 0.06 s), MTP acceptance 49.1%

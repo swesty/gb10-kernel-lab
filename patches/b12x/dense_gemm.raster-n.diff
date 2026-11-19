@@ -1,0 +1,60 @@
+--- dense_gemm.py.orig	2026-11-19 12:39:25.899416278 +0000
++++ dense_gemm.py	2026-11-19 12:40:23.901107448 +0000
+@@ -695,6 +695,12 @@
+                 )
+ 
+ 
++import os as _os_rn
++_DENSE_RASTER_N_MAX_CTAS = int(_os_rn.environ.get("B12X_DENSE_RASTER_N_MAX_CTAS", "0"))
++_DENSE_RASTER_N_MIN_CTAS = int(_os_rn.environ.get("B12X_DENSE_RASTER_N_MIN_CTAS", "1"))
++_DENSE_RASTER_N_LOG = _os_rn.environ.get("B12X_DENSE_RASTER_N_LOG", "0") == "1"
++
++
+ class DenseGemmKernel:
+     """Implements batched matrix multiplication (C = A x SFA x B x SFB) for
+     Blackwell GeForce architecture using warp-level MMA.
+@@ -4785,13 +4791,28 @@
+         gc = cute.zipped_divide(c, tiler=c_shape)
+         num_ctas_mnl = gc[(0, (None, None, None))].shape
+         cluster_shape_mnl = (1, 1, 1)
+-        tile_sched_params = utils.PersistentTileSchedulerParams(
+-            num_ctas_mnl,
+-            cluster_shape_mnl,
+-            swizzle_size=(
+-                16 if tile_shape_mnk == (128, 128, 64) and not large_m_unroll else 1
+-            ),
+-        )
++        _n_ctas = num_ctas_mnl[1]
++        _raster_n = (
++            _DENSE_RASTER_N_MAX_CTAS > 0
++            and isinstance(_n_ctas, int)
++            and _DENSE_RASTER_N_MIN_CTAS <= _n_ctas <= _DENSE_RASTER_N_MAX_CTAS
++            and not (split_k_slices > 1 or split_k_all_m)
++            and not direct_one_m_tile_scheduler
++        )
++        if _DENSE_RASTER_N_LOG:
++            print(f"[b12x dense raster] tile={tile_shape_mnk} n_ctas={_n_ctas} raster_along_n={_raster_n}", flush=True)
++        if _raster_n:
++            tile_sched_params = utils.PersistentTileSchedulerParams(
++                num_ctas_mnl, cluster_shape_mnl, swizzle_size=1, raster_along_m=False,
++            )
++        else:
++            tile_sched_params = utils.PersistentTileSchedulerParams(
++                num_ctas_mnl,
++                cluster_shape_mnl,
++                swizzle_size=(
++                    16 if tile_shape_mnk == (128, 128, 64) and not large_m_unroll else 1
++                ),
++            )
+         if cutlass.const_expr(split_k_slices > 1 or split_k_all_m):
+             grid = (num_ctas_mnl[0] if split_k_all_m else 1, split_k_slices, num_ctas_mnl[1])
+         else:
+@@ -5130,6 +5151,8 @@
+             self._plain_fp8,
+         )
+ 
++        if _DENSE_RASTER_N_MAX_CTAS > 0:
++            key = key + (("raster_n_ctas", _DENSE_RASTER_N_MIN_CTAS, _DENSE_RASTER_N_MAX_CTAS),)
+         return key if self._weight_only is None else key + (
+             self._weight_only, self._alpha_reciprocal, self._input_k,
+         )

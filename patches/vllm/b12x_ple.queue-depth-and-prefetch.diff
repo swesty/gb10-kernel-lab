@@ -1,0 +1,41 @@
+--- vllm/models/qwen4_exp/nvidia/b12x_ple.py.orig	2026-11-19 07:57:59
++++ vllm/models/qwen4_exp/nvidia/b12x_ple.py	2026-11-19 08:21:57
+@@ -134,7 +134,11 @@
+         self._table_storage = None
+         if layout.caps.table_memory == "io_uring":
+             api = _b12x_module("ple_embedding")
+-            self.disk_table = api.DiskTable(layout, shard_rows)
++            import os as _os_qd
++            self.disk_table = api.DiskTable(
++                layout, shard_rows,
++                queue_depth=int(_os_qd.environ.get("VLLM_PLE_DISK_QUEUE_DEPTH", "64")),
++            )
+             tensors: dict[str, torch.Tensor | None] = {"weight": None}
+             for name in ("weight_scale", "weight_scale_2"):
+                 shape = getattr(layout, f"{name}_shape")
+@@ -529,6 +533,25 @@
+         self._disk_prepared_tokens = input_ids.numel()
+         self._disk_prepared = True
+ 
++    def prefetch_disk(
++        self,
++        input_ids: torch.Tensor,
++        query_start_loc: torch.Tensor,
++        ngram_context: torch.Tensor,
++    ) -> None:
++        """PLE_PREFETCH_PATCH: stage the next batch's disk rows in the background (outside graphs)."""
++        disk_table = self.ngram_embedding.disk_table
++        if disk_table is None or not self.requires_disk_preparation:
++            return
++        if torch.compiler.is_compiling() or torch.cuda.is_current_stream_capturing():
++            return
++        self._plan_for(input_ids.numel())
++        token_count = self._prepare_inputs(input_ids, query_start_loc, ngram_context)
++        disk_table._prefetch_next = True
++        _b12x_module("ple_embedding").run(
++            self._bind_embedding(token_count), token_count=token_count
++        )
++
+     def prepare_dummy_output(self, num_tokens: int) -> None:
+         """Initialize graph-visible profiling output without reading the table."""
+         if not self.requires_disk_preparation:
