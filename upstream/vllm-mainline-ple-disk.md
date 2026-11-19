@@ -16,7 +16,7 @@ it does not fit next to the model, so disk offload is the practical option there
 32,768 rows (4,096 tokens × 8 heads), with a weight plane and a scale plane per row.
 
 I measured this pattern on the vLLM b12x fork (`local-inference-lab/vllm`), which reads the same table through b12x's
-`io_uring` `DiskTable`. There, the GPU sat **idle for 140–190 ms at the start of every prefill chunk** waiting for the
+`io_uring` `DiskTable`. There, the GPU sat **idle for 141–186 ms at the start of every prefill chunk** waiting for the
 read. That is about 0.7 s of a 16K-token prefill, around 12% of TTFT, and it does not show up in kernel-time tables. Two
 changes fixed most of it:
 

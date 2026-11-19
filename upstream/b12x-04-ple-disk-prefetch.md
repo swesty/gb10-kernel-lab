@@ -7,9 +7,9 @@ b12x 1.5.0.
 
 I serve Qwen3.8-Flash-Next-NVFP4 on a DGX Spark with `VLLM_PLE_TABLE_MEMORY=disk`, because the n-gram table (28.9 GB,
 320M NVFP4 rows) does not fit in memory next to the model. Kernel-time tables showed nothing unusual, but a gap histogram of
-an Nsight Systems trace showed the GPU **idle for 140–190 ms at the start of every 4,096-token prefill chunk**, always
-between `_hash_ids_kernel` and `_nvfp4_lookup_kernel`. That adds up to about 0.7 s of a 16K-token prefill, roughly 12% of
-TTFT.
+an Nsight Systems trace showed the GPU **idle for 141–186 ms at the start of every 4,096-token prefill chunk** (185–191 ms
+in the original build), always between `_hash_ids_kernel` and `_nvfp4_lookup_kernel`. The four gaps add up to 697 ms of a
+16K-token prefill, roughly 12% of TTFT.
 
 ## Why
 

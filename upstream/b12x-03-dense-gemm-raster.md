@@ -63,7 +63,7 @@ unroll for quantized-mode plans than have anyone adopt my overrides as-is.
 
 The separate MXFP8 activation `_quantize` pass before each prefill GEMM costs 0.13–0.37 ms per call, and
 `dense_gemm_fused_quant_a` only supports M ≤ 8. I fused the quantization into the producing kernels on the vLLM side
-instead (through a small workspace hook in `_PackedExecutionState.run`), for −2% prefill. An in-GEMM path for large M would
+instead (through a small workspace hook in `_PackedExecutionState.run`), for −1.5% prefill (−2.0% TTFT). An in-GEMM path for large M would
 make that unnecessary.
 
 Patches: <https://github.com/swesty/gb10-kernel-lab/tree/main/patches/b12x> (`dense_gemm.raster-n.diff`,

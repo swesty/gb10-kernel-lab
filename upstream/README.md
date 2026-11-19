@@ -55,7 +55,7 @@ Same code in both trees (FlashInfer's copies differ only in formatting/imports, 
 | # | Finding | FlashInfer `main` | LIL b12x `master` | Evidence | Draft | Priority |
 |---|---|---|---|---|---|---|
 | B1 | **MTP feedback prefill GEMM** `_TILE_N = 16` + M-major grid → A re-read once per N tile (13.4 GB per chunk) | present (`sequence/mtp_feedback/_cute_prefill.py:29`, `:280`) | present | 57.7 → 2.6 ms (22×), bit-identical; −3.7% prefill | [b12x-01](b12x-01-mtp-prefill-tile.md) | **high** |
-| B2 | **BF16 swizzle on element offsets**: `allocate_tensor(BFloat16, composed S<3,4,3> layout)` → 2-way bank conflicts | present, both sites: `attention/paged/_selected_forward.py` (`_shared_layouts`, `allocate_tensor` at :616–631), `gemm/bf16_gemv/_kernel.py:389–390` | present (same two sites) | attention: 43–54% excess wavefronts → 0%; bf16_gemv unmeasured | [b12x-02](b12x-02-bf16-swizzle.md) | **high** |
+| B2 | **BF16 swizzle on element offsets**: `allocate_tensor(BFloat16, composed S<3,4,3> layout)` → 2-way bank conflicts | present, both sites: `attention/paged/_selected_forward.py` (`_shared_layouts`, `allocate_tensor` at :616–631), `gemm/bf16_gemv/_kernel.py:389–390` | present (same two sites) | attention (raw bank-conflict counters): loads 46.8% to 0.0%, stores 51.6% to ~5%, same on sm_120; bf16_gemv unmeasured | [b12x-02](b12x-02-bf16-swizzle.md) | **high** |
 | B3 | **Dense GEMM persistent scheduler always M-major** (A re-streamed when A > W and > L2); quantized-mode `BlockscaledQuery` has no tile knob | present (`_lib/dense_gemm.py:5054`; `_raster_along_m` appears only in a TVM-FFI compat shim) | present | out_proj −23–30%, qkvz −4–10% | [b12x-03](b12x-03-dense-gemm-raster.md) | medium |
 | B4 | **PLE `DiskTable` reads synchronously in the batch**; `queue_depth` default 64 | present (`sequence/ple_embedding/_disk.py:19`, `sequence/_shared/disk_table.py:331`) | present | QD 256: −4.1% TTFT; next-chunk prefetch: −6.2% | [b12x-04](b12x-04-ple-disk-prefetch.md) | medium |
 | B5 | `NCCL_IB_GID_INDEX=-1` ("auto") taken literally as GID −1 | present (`comm/roce/roce_oneshot.py:88`) | present | by inspection | [b12x-05](b12x-05-small-bugs.md) | low–medium |
@@ -74,7 +74,7 @@ All still present on `dev/karmic-kraken`; all are prefill wins on Qwen3.8-Flash-
 | V2 | `B12xQSAAttention` doesn't use the fused q/k norm + mRoPE + gate kernel | −5% | **already done** (`use_fused_qk_norm_rope_gate`, `qsa_prepare`) |
 | V3 | GDN b12x mixed path always gathers/scatters even for the identity worklist | −4% | **n/a** (mainline has no b12x mixed GDN path) |
 | V4 | HyperConnection: fused up-projection + gated mean; Triton combine-norm | −5% | **already done in its own form** (`hc_up_gate_mix` CUDA kernel, `hc_combine_norm`) |
-| V5 | MXFP8 activation quantisation fused into its producers (needs a b12x hook) | −2% | not checked |
+| V5 | MXFP8 activation quantisation fused into its producers (needs a b12x hook) | −1.5% prefill, −2.0% TTFT | not checked |
 
 ## Mainline vLLM (`vllm-project/vllm`) → one issue
 

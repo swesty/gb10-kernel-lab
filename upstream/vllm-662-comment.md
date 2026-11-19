@@ -15,7 +15,7 @@ The vLLM-side items below are all still present on `dev/karmic-kraken` @ `8244d1
 1. **PLE disk table** (`b12x_ple.py`). `api.DiskTable(layout, shard_rows)` uses the default `queue_depth=64`; 256 cuts TTFT
    by 4.1%. Prefetching the next prefill chunk's rows while the current chunk computes (predicted in
    `model_state.prepare_inputs`, checked against the real IDs, falling back on a mismatch) cuts another 6.2%. Without it,
-   the GPU sat idle for 140–190 ms per chunk waiting on synchronous reads. (b12x side: flashinfer-ai/flashinfer#TBD.)
+   the GPU sat idle for 141–186 ms per chunk waiting on synchronous reads. (b12x side: flashinfer-ai/flashinfer#TBD.)
 2. **QSA q/k norm** (`b12x_qsa.py`). `B12xQSAAttention` never calls the existing `fused_qk_rmsnorm_rope_gate`. The eager
    `GemmaRMSNorm` chain, the separate mRoPE and `output * sigmoid(gate)` cost about 4 ms per layer per chunk. The fused
    norm and RoPE, plus a gate kernel that reads the gate in place, gave −5% prefill.
@@ -25,7 +25,7 @@ The vLLM-side items below are all still present on `dev/karmic-kraken` @ `8244d1
 4. **HyperConnection.** Fusing the up-projection with the gated mean (so the T × 10,240 gate logits never reach memory),
    plus a one-program-per-token Triton combine-norm for prefill, gave −5%. Related to #659, but not the same change.
 5. **MXFP8 activation quantization**, fused into the GDN gated norm and the attention output gate. This needs a small b12x
-   workspace hook, and gave −2%.
+   workspace hook, and gave −1.5% prefill (−2.0% TTFT).
 
 I also found three b12x kernel issues along the way (the MTP feedback prefill tile, the BF16 swizzle in two kernels, and
 the dense GEMM tile order) and am filing those with FlashInfer, where b12x now lives. I checked the hardware-dependent

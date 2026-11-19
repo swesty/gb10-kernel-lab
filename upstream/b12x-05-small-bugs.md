@@ -28,7 +28,7 @@ have not re-run it.
 
 `~/.cache/b12x/compile/preparation/<hash>.json` stores the snapshot directory in `identity.namespace.model`. When the
 Hugging Face ref moved to a new revision of the same model (byte-identical weight shards; only `config.json` metadata
-changed), the next start found no cached selections and began a full cold autotune of 209 GDN-prefill plans. Host memory
+changed), the next start found no cached selections and began a full cold autotune of 209 plans. Host memory
 fell to about 9 GiB on a 121 GiB unified-memory Spark before I stopped it. Keying the identity on the model's content (a
 digest of the config and the weight index) instead of its path would avoid this. At minimum, a log line such as "no cached
 selections for this model identity, autotuning N plans" would make it obvious what is happening.
