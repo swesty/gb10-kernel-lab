@@ -1,0 +1,6 @@
+[16:21:43] E2: start image=vllm/vllm-openai:v0.34.0 extra=--prefix-cache-retention-interval 6656
+[16:24:24] E2: ready after 161 s
+[16:25:28] E2: done; gpu mem now 858 MiB
+[16:25:28] F2: start image=vllm/vllm-openai:v0.34.0 extra=--prefix-cache-retention-interval 6656 --linear-backend flashinfer_b12x
+[16:28:09] F2: ready after 160 s
+[16:29:15] F2: done; gpu mem now 858 MiB

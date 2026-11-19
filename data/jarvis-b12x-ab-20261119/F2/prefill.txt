@@ -1,0 +1,18 @@
+--- prefill 16K x4 c=1
+Failed requests:                         0         
+Output token throughput (tok/s):         5.25      
+Mean TTFT (ms):                          1421.64   
+Median TTFT (ms):                        1419.48   
+Mean TPOT (ms):                          14.35     
+--- prefill 4K x8 c=1
+Failed requests:                         0         
+Output token throughput (tok/s):         18.05     
+Mean TTFT (ms):                          334.91    
+Median TTFT (ms):                        333.29    
+Mean TPOT (ms):                          15.38     
+--- prefill 16K x8 c=4
+Failed requests:                         0         
+Output token throughput (tok/s):         11.59     
+Mean TTFT (ms):                          2101.70   
+Median TTFT (ms):                        1266.71   
+Mean TPOT (ms):                          91.39     

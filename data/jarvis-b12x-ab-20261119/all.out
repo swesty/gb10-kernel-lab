@@ -1,0 +1,19 @@
+[16:00:19] A: start image=vllm-openai:v0.30.0-pr55601 extra=
+[16:03:50] A: ready after 211 s
+[16:05:09] A: done; gpu mem now 858 MiB
+[16:05:09] B: start image=vllm-openai:v0.30.0-pr55601 extra=--linear-backend flashinfer_b12x
+[16:08:30] B: ready after 201 s
+[16:09:48] B: done; gpu mem now 858 MiB
+[16:09:48] C: start image=vllm-openai:v0.30.0-pr55601-b12x130 extra=--linear-backend b12x
+[16:13:09] C: ready after 201 s
+[16:14:29] C: done; gpu mem now 858 MiB
+[16:14:29] D: start image=vllm-openai:v0.30.0-pr55601-b12x130 extra=--linear-backend b12x --attention-backend B12X
+[16:15:19] D: FAILED to start
+(EngineCore pid=361) Traceback (most recent call last):
+(EngineCore pid=361) ERROR 11-19 16:15:05 [core.py:1366] ValueError: b12x requires --block-size in (64, 128), got 16.
+(EngineCore pid=361)     raise e
+(EngineCore pid=361)     raise ValueError(
+(EngineCore pid=361) ValueError: b12x requires --block-size in (64, 128), got 16.
+(APIServer pid=1) Traceback (most recent call last):
+(APIServer pid=1)     raise RuntimeError(
+(APIServer pid=1) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {'EngineCore': 1}

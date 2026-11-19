@@ -1,0 +1,24 @@
+{
+ "arm": "A",
+ "c1": {
+  "requests": 6,
+  "mean_tps_per_req": 170.4543352667462,
+  "mean_ttft_s": 0.1468503475189209,
+  "agg_tps": 158.84702486155427,
+  "accept_rate": 0.3709160794362588,
+  "accepted": 1737.0,
+  "drafted": 4683.0
+ },
+ "c4": {
+  "requests": 12,
+  "mean_tps_per_req": 154.81930903102185,
+  "mean_ttft_s": 0.27429882685343426,
+  "agg_tps": 537.4340282089703,
+  "accept_rate": 0.3913285158421345,
+  "accepted": 3520.0,
+  "drafted": 8995.0
+ },
+ "json_ok": true,
+ "tool_ok": true,
+ "prompt_logprob_positions": 2448
+}

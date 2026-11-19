@@ -1,8 +1,8 @@
-<!-- Draft issue for local-inference-lab/b12x. Not filed. -->
+<!-- Draft issue for flashinfer-ai/flashinfer (experimental/b12x) and local-inference-lab/b12x. Not filed. -->
 # Dense GEMM: M-major persistent tile walk re-streams A from DRAM on narrow outputs; quantized mode has no tile knob
 
-**Where:** `b12x/_lib/dense_gemm.py` `DenseGemmKernel._compute_grid` and `gemm/blockscaled/_preparation.py`
-(`_lower_dense_with_hint`); unchanged on `master` @ `2cc7f66`.
+**Where:** `_lib/dense_gemm.py` `DenseGemmKernel._compute_grid` (FlashInfer line 5054) and `gemm/blockscaled/_preparation.py`
+(`_lower_dense_with_hint`) — present in FlashInfer `main` @ `d3f59f0` and local-inference-lab/b12x `master` @ `2cc7f66`.
 
 Measured on a DGX Spark (GB10, 48 SMs, 24 MB L2, measured FP8 `mma.sync` peak 249 TFLOPS) with the MXFP8 dense
 projections of Qwen3.8-Flash-Next at prefill size (M = 4,096).

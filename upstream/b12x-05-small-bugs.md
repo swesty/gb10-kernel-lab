@@ -1,8 +1,9 @@
-<!-- Draft issue(s) for local-inference-lab/b12x. Could be filed as one issue or split. Not filed. -->
+<!-- Draft issue(s) for flashinfer-ai/flashinfer (experimental/b12x) and local-inference-lab/b12x. Not filed. -->
 # Smaller issues found while profiling Qwen3.8-Flash-Next on a DGX Spark
 
-Environment: b12x 1.5.0 (`a321f9a6`), vLLM `local-inference-lab/vllm` `ab86b707`, GB10 / sm_121, CUDA 13.0. The code
-paths below are unchanged on `master` @ `2cc7f66` unless noted.
+Environment: b12x 1.5.0 (`a321f9a6`), vLLM `local-inference-lab/vllm` `ab86b707`, GB10 / sm_121, CUDA 13.0. Item 1 is present in FlashInfer `main` @ `d3f59f0`
+and local-inference-lab/b12x `master` @ `2cc7f66`; items 2–4 were seen on 1.5.0 and are noted per item. FlashInfer has recent
+deterministic-output fixes (`ecc4b8a9`), so item 3 should be re-checked there before filing.
 
 ## 1. `NCCL_IB_GID_INDEX=-1` is taken literally (`comm/roce/roce_oneshot.py:88`)
 

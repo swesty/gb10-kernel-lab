@@ -1,0 +1,20 @@
+[16:15:34] E: start image=vllm/vllm-openai:v0.34.0 extra=
+[16:18:14] E: FAILED to start
+(EngineCore pid=254) ERROR 11-19 16:18:11 [core.py:1757] ValueError: prefix_cache_retention_interval (6592) must be non-negative and a multiple of scheduler_block_size (1664).
+Traceback (most recent call last):
+    raise e
+    raise ValueError(
+ValueError: prefix_cache_retention_interval (6592) must be non-negative and a multiple of scheduler_block_size (1664).
+See https://nanobind.readthedocs.io/en/latest/refleaks.htmlTraceback (most recent call last):
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+[16:18:15] F: start image=vllm/vllm-openai:v0.34.0 extra=--linear-backend flashinfer_b12x
+[16:20:55] F: FAILED to start
+    raise e
+(EngineCore pid=257) ERROR 11-19 16:20:47 [core.py:1757]     raise ValueError(
+(EngineCore pid=257) ERROR 11-19 16:20:47 [core.py:1757] ValueError: prefix_cache_retention_interval (6592) must be non-negative and a multiple of scheduler_block_size (1664).
+    raise ValueError(
+ValueError: prefix_cache_retention_interval (6592) must be non-negative and a multiple of scheduler_block_size (1664).
+See https://nanobind.readthedocs.io/en/latest/refleaks.htmlTraceback (most recent call last):
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}

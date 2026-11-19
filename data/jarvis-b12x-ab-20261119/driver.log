@@ -1,0 +1,48 @@
+[16:00:19] A: start image=vllm-openai:v0.30.0-pr55601 extra=
+[16:03:50] A: ready after 211 s
+[16:05:09] A: done; gpu mem now 858 MiB
+[16:05:09] B: start image=vllm-openai:v0.30.0-pr55601 extra=--linear-backend flashinfer_b12x
+[16:08:30] B: ready after 201 s
+[16:09:48] B: done; gpu mem now 858 MiB
+[16:09:48] C: start image=vllm-openai:v0.30.0-pr55601-b12x130 extra=--linear-backend b12x
+[16:13:09] C: ready after 201 s
+[16:14:29] C: done; gpu mem now 858 MiB
+[16:14:29] D: start image=vllm-openai:v0.30.0-pr55601-b12x130 extra=--linear-backend b12x --attention-backend B12X
+[16:15:19] D: FAILED to start
+(EngineCore pid=361) Traceback (most recent call last):
+(EngineCore pid=361) ERROR 11-19 16:15:05 [core.py:1366] ValueError: b12x requires --block-size in (64, 128), got 16.
+(EngineCore pid=361)     raise e
+(EngineCore pid=361)     raise ValueError(
+(EngineCore pid=361) ValueError: b12x requires --block-size in (64, 128), got 16.
+(APIServer pid=1) Traceback (most recent call last):
+(APIServer pid=1)     raise RuntimeError(
+(APIServer pid=1) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {'EngineCore': 1}
+ALLDONE
+[16:15:34] E: start image=vllm/vllm-openai:v0.34.0 extra=
+[16:18:14] E: FAILED to start
+(EngineCore pid=254) ERROR 11-19 16:18:11 [core.py:1757] ValueError: prefix_cache_retention_interval (6592) must be non-negative and a multiple of scheduler_block_size (1664).
+Traceback (most recent call last):
+    raise e
+    raise ValueError(
+ValueError: prefix_cache_retention_interval (6592) must be non-negative and a multiple of scheduler_block_size (1664).
+See https://nanobind.readthedocs.io/en/latest/refleaks.htmlTraceback (most recent call last):
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+[16:18:15] F: start image=vllm/vllm-openai:v0.34.0 extra=--linear-backend flashinfer_b12x
+[16:20:55] F: FAILED to start
+    raise e
+(EngineCore pid=257) ERROR 11-19 16:20:47 [core.py:1757]     raise ValueError(
+(EngineCore pid=257) ERROR 11-19 16:20:47 [core.py:1757] ValueError: prefix_cache_retention_interval (6592) must be non-negative and a multiple of scheduler_block_size (1664).
+    raise ValueError(
+ValueError: prefix_cache_retention_interval (6592) must be non-negative and a multiple of scheduler_block_size (1664).
+See https://nanobind.readthedocs.io/en/latest/refleaks.htmlTraceback (most recent call last):
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+E,F retry with retention 6656
+[16:21:43] E2: start image=vllm/vllm-openai:v0.34.0 extra=--prefix-cache-retention-interval 6656
+[16:24:24] E2: ready after 161 s
+[16:25:28] E2: done; gpu mem now 858 MiB
+[16:25:28] F2: start image=vllm/vllm-openai:v0.34.0 extra=--prefix-cache-retention-interval 6656 --linear-backend flashinfer_b12x
+[16:28:09] F2: ready after 160 s
+[16:29:15] F2: done; gpu mem now 858 MiB
+ALLDONE3

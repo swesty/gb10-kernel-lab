@@ -1,0 +1,21 @@
+(APIServer pid=1) INFO 11-19 16:05:18 [api_utils.py:286] non-default args: {'model_tag': '/models/qwen38-dflash2-20260824', 'enable_auto_tool_choice': True, 'tool_call_parser': 'qwen3_coder', 'port': 8001, 'model': '/mod
+(EngineCore pid=363) INFO 11-19 16:05:44 [core.py:123] Initializing a V1 LLM engine (v0.30.0) with config: model='/models/qwen38-dflash2-20260824', speculative_config=SpeculativeConfig(method='dflash', model='/models/qwe
+(EngineCore pid=363) INFO 11-19 16:05:45 [cuda.py:597] Using backend AttentionBackendEnum.FLASH_ATTN for vit attention
+(EngineCore pid=363) WARNING 11-19 16:05:45 [__init__.py:366] --linear-backend=flashinfer_b12x has no kernel for this linear layer type; using automatic selection for that layer type.
+(EngineCore pid=363) INFO 11-19 16:05:45 [__init__.py:758] Selected FlashInferFP8ScaledMMLinearKernel for MergedColumnParallelLinear
+(EngineCore pid=363) INFO 11-19 16:05:45 [__init__.py:758] Selected FlashInferFP8ScaledMMLinearKernel for RowParallelLinear
+(EngineCore pid=363) INFO 11-19 16:05:45 [qwen_gdn_linear_attn.py:176] Using FlashInfer GDN prefill kernel (requested=auto, head_k_dim=128).
+(EngineCore pid=363) INFO 11-19 16:05:46 [__init__.py:1180] Using FlashInferB12xNvFp4LinearKernel for NVFP4 GEMM
+(EngineCore pid=363) INFO 11-19 16:05:46 [__init__.py:758] Selected FlashInferFP8ScaledMMLinearKernel for QKVParallelLinear
+(EngineCore pid=363) INFO 11-19 16:05:46 [cuda.py:538] Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN'].
+(EngineCore pid=363) INFO 11-19 16:05:49 [utils.py:320] Using LBNHC KV cache layout.
+(EngineCore pid=363) WARNING 11-19 16:06:45 [kv_cache_utils.py:1556] Add 2 padding layers, may waste at most 4.17% KV cache memory
+(EngineCore pid=363) WARNING 11-19 16:06:45 [kv_cache_utils.py:1556] Add 4 padding layers, may waste at most 25.00% KV cache memory
+(EngineCore pid=363) WARNING 11-19 16:06:45 [kv_cache_utils.py:2206] Speculative decoding (method=dflash) is enabled but no KV cache group could be identified as the draft model's.
+(EngineCore pid=363) INFO 11-19 16:07:56 [gpu_worker.py:640] Available KV cache memory: 31.4 GiB
+(EngineCore pid=363) INFO 11-19 16:07:56 [gpu_worker.py:655] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.6500 is equivalent to --gpu-memory-utilization=0.6386 wi
+(EngineCore pid=363) WARNING 11-19 16:07:56 [kv_cache_utils.py:1556] Add 2 padding layers, may waste at most 4.17% KV cache memory
+(EngineCore pid=363) WARNING 11-19 16:07:56 [kv_cache_utils.py:1556] Add 4 padding layers, may waste at most 25.00% KV cache memory
+(EngineCore pid=363) WARNING 11-19 16:07:56 [kv_cache_utils.py:2206] Speculative decoding (method=dflash) is enabled but no KV cache group could be identified as the draft model's.
+(EngineCore pid=363) INFO 11-19 16:07:56 [kv_cache_utils.py:2395] GPU KV cache size: 513,997 tokens, Maximum concurrency for 262,144 tokens per request: 1.96x
+(EngineCore pid=363) WARNING 11-19 16:08:26 [kv_cache_coordinator.py:715] Disabling fine-grained prefix-cache hits because these KV cache managers require block-aligned lookups: SlidingWindowManager.

@@ -1,7 +1,7 @@
-<!-- Draft issue for local-inference-lab/b12x. Not filed. -->
+<!-- Draft issue for flashinfer-ai/flashinfer (experimental/b12x) and local-inference-lab/b12x. Not filed. -->
 # BF16 shared-memory tiles: the 128-byte swizzle atom is applied to element offsets, giving 2-way bank conflicts
 
-**Where (both unchanged on `master` @ `2cc7f66`):**
+**Where** (present in FlashInfer `main` @ `d3f59f0` under `flashinfer/experimental/b12x/`, and in local-inference-lab/b12x `master` @ `2cc7f66`):
 - `b12x/attention/paged/_selected_forward.py`: the Q, K, V and P tiles of the selected-position (QSA) paged attention kernel.
 - `b12x/gemm/bf16_gemv/_kernel.py:389–390`: `shared_a` / `shared_b`.
 
