@@ -1444,7 +1444,9 @@ bandwidth (§13.4), the attention kernel was reworked (§9), the largest dense G
 
 ## 15. Artifacts and reproduction
 
-Everything is in `gb10-kernel-lab/` (paths below are relative to it). Nsight Systems `.sqlite` exports are not
+Everything is in `gb10-kernel-lab/` (paths below are relative to it), published at
+<https://github.com/swesty/gb10-kernel-lab>. The 150 MB side-engine Nsight Compute report, the QSA selection dumps
+and the recipe tarball are assets of release `v2026.11.19`. Nsight Systems `.sqlite` exports are not
 kept; regenerate them with `nsys export --type sqlite <file>.nsys-rep`. The spark-5 locations are the
 working copies the scripts expect.
 
@@ -1475,7 +1477,7 @@ working copies the scripts expect.
 | Tensor-core peak microbenchmark (§13.16) | `scripts/mma_peak.cu` |
 | Dense GEMM harness, sweeps, vendor comparison, placement test, tile-order patch (§13.16) | `scripts/dense_gemm_*`, `scripts/dense_raster_*`; `data/gemm/`; `data/exp-dense-raster.txt` |
 | Fused activation quantisation (§13.19) | `scripts/gdn_norm_mxfp8.py` (+ `_check`, `_diff`), `scripts/norm_quant_fusion_patch.py`, `scripts/qsa_gate_quant_patch.py`, `scripts/qsa_gate_quant_check.py`, `scripts/arm_live.sh`; `patches/vllm/*.cumulative.diff`; `data/exp-nq-ab-*.txt`, `data/exp-qg-ab-*.txt` |
-| **Shareable recipe** (spark-vllm-docker recipe + mod with checksum-gated file installs, README, bench script); validated on the tested image and refused on a newer one | `recipe/`; tarball `dist/gb10-flashnext-recipe-20261119.tar.gz` |
+| **Shareable recipe** (spark-vllm-docker recipe + mod with checksum-gated file installs, README, bench script); validated on the tested image and refused on a newer one | `recipe/`; tarball on release `v2026.11.19` |
 | Soak test and guarded start (§13.20) | `scripts/soak.sh`, `scripts/guarded_start.sh`, `scripts/recipe_e2e.sh`; `data/soak-20261119.txt` |
 | Same-session A/B (§13.14) | `scripts/final_ab.sh`; `data/exp-final-session-*.txt`, `data/final_ab.log` |
 | Current-build capture and idle-gap analysis; PLE queue-depth patch and sweep (§13.17) | `data/nsys/E-prefill-16k-current.nsys-rep`; `scripts/capture_current.sh`, `scripts/gaps.py`, `scripts/layer_seq.py`, `scripts/ple_qd_patch.py`, `scripts/ple_disk_sweep.sh`, `scripts/ple_prefetch_patch.py`, `scripts/ple_prefetch_live.sh`; `patches/vllm/b12x_ple.*.diff`, `patches/b12x/ple_prefetch.b12x-and-vllm.diff`; `data/exp-ple-*.txt` |

@@ -1,5 +1,7 @@
 # Qwen3.8-Flash-Next on a DGX Spark: faster prefill recipe
 
+Source: <https://github.com/swesty/gb10-kernel-lab> (this folder is `recipe/`).
+
 A drop-in variant of eugr's `qwen3.8-flash-next-nvfp4-solo` recipe for
 [spark-vllm-docker](https://github.com/eugr/spark-vllm-docker). It adds one mod that installs patched
 vLLM and b12x files, and a set of environment switches that turn each optimisation on.
@@ -47,8 +49,10 @@ cd <spark-vllm-docker>
 ./run-recipe.sh qwen3.8-flash-next-nvfp4-solo-gb10fast --solo             # add --port, -d as usual
 ```
 Because `vllm-node-b12x:latest` already exists, the recipe uses it and does not pull or build. The container
-log should show `[flashnext-gb10-fast] installed 13 files` before vLLM starts. Startup takes ~3–4 minutes;
-the first start also compiles a few new kernel variants.
+log should show `[flashnext-gb10-fast] installed 13 files` before vLLM starts. Startup takes ~3–4 minutes once
+b12x's kernel caches are warm. The very first start of the model (stock recipe or this one) autotunes
+b12x kernels and can take much longer; leave the machine otherwise idle while it does, because it needs
+memory headroom.
 
 ## Check it
 
