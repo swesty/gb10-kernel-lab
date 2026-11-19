@@ -1,0 +1,14 @@
+(EngineCore pid=256) INFO 11-19 16:57:55 [cuda.py:608] Using backend AttentionBackendEnum.FLASH_ATTN for vit attention
+(EngineCore pid=256) INFO 11-19 16:57:55 [__init__.py:818] Selected FlashInferFP8ScaledMMLinearKernel for MergedColumnParallelLinear
+(EngineCore pid=256) INFO 11-19 16:57:55 [__init__.py:818] Selected FlashInferFP8ScaledMMLinearKernel for RowParallelLinear
+(EngineCore pid=256) INFO 11-19 16:57:55 [qwen_gdn_linear_attn.py:379] Using FlashInfer GDN prefill kernel (requested=auto, head_k_dim=128).
+(EngineCore pid=256) INFO 11-19 16:57:55 [__init__.py:1305] Using FlashInferCutlassNvFp4LinearKernel for NVFP4 GEMM
+(EngineCore pid=256) INFO 11-19 16:57:55 [__init__.py:818] Selected FlashInferFP8ScaledMMLinearKernel for QKVParallelLinear
+(EngineCore pid=256) INFO 11-19 16:57:55 [cuda.py:549] Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN'].
+(EngineCore pid=256) INFO 11-19 16:57:59 [utils.py:419] Using LBNHC KV cache layout.
+(EngineCore pid=256) WARNING 11-19 16:57:59 [kv_cache_planning.py:583] Add 2 padding layers, may waste at most 4.17% KV cache memory
+(EngineCore pid=256) WARNING 11-19 16:57:59 [kv_cache_planning.py:583] Add 4 padding layers, may waste at most 25.00% KV cache memory
+(EngineCore pid=256) INFO 11-19 16:58:33 [gpu_worker.py:795] Available KV cache memory: 34.1 GiB
+(EngineCore pid=256) INFO 11-19 17:00:02 [extensible_kv_cache.py:693] Memory after warmup: 64.33 GiB free, 0.02 GiB committed to the KV cache, 1.68 GiB kept for transient activations (1.68 GiB allocated at peak, 1.29 GiB
+(EngineCore pid=256) INFO 11-19 17:00:02 [kv_cache_utils.py:1168] GPU KV cache size: 686,148 tokens, Maximum concurrency for 262,144 tokens per request: 2.62x
+(EngineCore pid=256) INFO 11-19 17:00:02 [extensible_kv_cache.py:536] Extended KV cache to 1950 blocks (30.95 GiB).

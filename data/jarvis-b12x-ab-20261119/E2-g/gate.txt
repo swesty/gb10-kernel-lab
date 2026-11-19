@@ -1,0 +1,70 @@
+{
+ "cold_cold": {
+  "n": 3,
+  "exact": 3,
+  "first_diff": [
+   null,
+   null,
+   null
+  ],
+  "cached": [
+   null,
+   null,
+   null
+  ]
+ },
+ "cold_warm": {
+  "n": 3,
+  "exact": 0,
+  "first_diff": [
+   4,
+   32,
+   7
+  ],
+  "cached": [
+   null,
+   null,
+   null
+  ]
+ },
+ "partial_vs_cold": {
+  "n": 6,
+  "exact": 0,
+  "first_diff": [
+   6,
+   4,
+   4,
+   0,
+   37,
+   0
+  ],
+  "cached": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ },
+ "full_vs_cold": {
+  "n": 6,
+  "exact": 0,
+  "first_diff": [
+   6,
+   4,
+   4,
+   0,
+   37,
+   0
+  ],
+  "cached": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   null
+  ]
+ }
+}

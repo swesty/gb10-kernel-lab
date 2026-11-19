@@ -1,0 +1,241 @@
+{
+ "arm": "E2-g",
+ "cold_cold": [
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  },
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  },
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  }
+ ],
+ "cold_warm": [
+  {
+   "exact": false,
+   "first_diff_tok": 4,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.02023,
+   "cached_a": null,
+   "cached_b": null
+  },
+  {
+   "exact": false,
+   "first_diff_tok": 32,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.15581,
+   "cached_a": null,
+   "cached_b": null
+  },
+  {
+   "exact": false,
+   "first_diff_tok": 7,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.15937,
+   "cached_a": null,
+   "cached_b": null
+  }
+ ],
+ "multiturn": [
+  {
+   "turn": 2,
+   "partial_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 6,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.20159,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 6,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.20159,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 3,
+   "partial_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 4,
+    "compared": 58,
+    "max_dlogp_before_diff": 0.09074,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 4,
+    "compared": 58,
+    "max_dlogp_before_diff": 0.09074,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 2,
+   "partial_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 4,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.19246,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 4,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.19246,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 3,
+   "partial_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 0,
+    "compared": 71,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 0,
+    "compared": 71,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 2,
+   "partial_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 37,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.30641,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 37,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.30641,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 3,
+   "partial_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 0,
+    "compared": 60,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": false,
+    "first_diff_tok": 0,
+    "compared": 60,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   }
+  }
+ ],
+ "summary": {
+  "cold_cold": {
+   "n": 3,
+   "exact": 3,
+   "first_diff": [
+    null,
+    null,
+    null
+   ],
+   "cached": [
+    null,
+    null,
+    null
+   ]
+  },
+  "cold_warm": {
+   "n": 3,
+   "exact": 0,
+   "first_diff": [
+    4,
+    32,
+    7
+   ],
+   "cached": [
+    null,
+    null,
+    null
+   ]
+  },
+  "partial_vs_cold": {
+   "n": 6,
+   "exact": 0,
+   "first_diff": [
+    6,
+    4,
+    4,
+    0,
+    37,
+    0
+   ],
+   "cached": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "full_vs_cold": {
+   "n": 6,
+   "exact": 0,
+   "first_diff": [
+    6,
+    4,
+    4,
+    0,
+    37,
+    0
+   ],
+   "cached": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  }
+ }
+}

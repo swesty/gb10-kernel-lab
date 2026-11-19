@@ -1,0 +1,241 @@
+{
+ "arm": "A-g",
+ "cold_cold": [
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  },
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  },
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  }
+ ],
+ "cold_warm": [
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  },
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  },
+  {
+   "exact": true,
+   "first_diff_tok": null,
+   "compared": 200,
+   "max_dlogp_before_diff": 0.0,
+   "cached_a": null,
+   "cached_b": null
+  }
+ ],
+ "multiturn": [
+  {
+   "turn": 2,
+   "partial_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 3,
+   "partial_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 57,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 57,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 2,
+   "partial_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 3,
+   "partial_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 65,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 65,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 2,
+   "partial_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 200,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   }
+  },
+  {
+   "turn": 3,
+   "partial_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 62,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   },
+   "full_vs_cold": {
+    "exact": true,
+    "first_diff_tok": null,
+    "compared": 62,
+    "max_dlogp_before_diff": 0.0,
+    "cached_a": null,
+    "cached_b": null
+   }
+  }
+ ],
+ "summary": {
+  "cold_cold": {
+   "n": 3,
+   "exact": 3,
+   "first_diff": [
+    null,
+    null,
+    null
+   ],
+   "cached": [
+    null,
+    null,
+    null
+   ]
+  },
+  "cold_warm": {
+   "n": 3,
+   "exact": 3,
+   "first_diff": [
+    null,
+    null,
+    null
+   ],
+   "cached": [
+    null,
+    null,
+    null
+   ]
+  },
+  "partial_vs_cold": {
+   "n": 6,
+   "exact": 6,
+   "first_diff": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "cached": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "full_vs_cold": {
+   "n": 6,
+   "exact": 6,
+   "first_diff": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "cached": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  }
+ }
+}

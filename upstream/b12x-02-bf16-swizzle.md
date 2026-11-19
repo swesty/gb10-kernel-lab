@@ -29,6 +29,10 @@ The TMA-fed kernels use `get_tensor(layout.outer, swizzle=layout.inner)`, which 
 `bf16_gemv` has the same construction; its conflicts are expected but **not measured**. That kernel is not on the
 Flash Next path.
 
+Measured on sm_121 (GB10). This is not a tuning choice: bank conflicts depend only on the SM's shared-memory banks, which
+are the same on sm_120 and sm_121. So the fix should remove the same conflicts on an RTX PRO 6000. We have not measured it
+there.
+
 ## Patch / references
 
 - Kernel with the fix behind `B12X_SELECTED_SWZ333` (plus the other two changes behind their own switches):

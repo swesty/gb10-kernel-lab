@@ -22,15 +22,21 @@ Walking along N when there are few N tiles (patch: `raster_along_m=False` for la
 | shared-expert down 2560 × 640 | 119–131 µs | 107–115 µs |
 | shared-expert gate+up 1280 × 2560 (A fits in L2) | 177 µs | 186 µs (worse, so excluded) |
 
-Output is identical (only the tile order changes). Live: −1.2% real-text prefill, −1.7% 16K TTFT. A simple rule that
-fits these shapes is "walk along N when the A operand is larger than W and than L2".
+Output is identical (only the tile order changes). Live: −1.2% real-text prefill, −1.7% 16K TTFT.
+
+**This is L2-size-dependent and was measured on sm_121 only.** On an RTX PRO 6000 (128 MB L2) out_proj's 25 MB A fits in L2,
+so M-major is probably fine there and forcing N-major could be neutral or slower. So we are not proposing a new default.
+We propose adding `raster_along_m` to the tuner's candidate set, or applying N-major only under the existing low-SM / Spark
+policy (`_use_low_sm_dense_tactics`, ≤ 64 SMs) when A is larger than W and than L2.
 
 ## 2. No tile control in quantized mode
 
 `BlockscaledQuery` in `activation_mode="quantized"` lowers through `_lower_dense_with_hint` → `DenseGemmQuery` with no
 `overrides`, so the tuner cannot pick tiles outside its default lowering. Passing
 `overrides={"mma_tiler_mn": (128, 128), "_tile_k_override": 64, "_large_m_unroll_override": True}` for large-M plans:
-`in_proj_qkvz` (16384 × 2560) 2,150 → 1,926–2,074 µs, attention qkv (13312 × 2560) 1,749 → 1,585 µs; live −0.5%.
+`in_proj_qkvz` (16384 × 2560) 2,150 → 1,926–2,074 µs, attention qkv (13312 × 2560) 1,749 → 1,585 µs; live −0.5% (sm_121).
+The best tile surely differs on a 188-SM part, so the request is to let the tuner explore tiles for quantized-mode plans,
+not to hard-code these.
 
 ## Related
 

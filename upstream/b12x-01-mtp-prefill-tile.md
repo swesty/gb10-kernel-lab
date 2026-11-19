@@ -30,10 +30,19 @@ On a DGX Spark (GB10, sm_121) serving Qwen3.8-Flash-Next-NVFP4 this one kernel t
 Every variant's output is **bit-identical** to the BF16 reference. Live, with tile N 128 / 2 stages / N-fastest:
 real-text 14.5K prefill 5.47 → 5.27 s (−3.7%), 16K TTFT 5,842 → 5,639 ms (−3.5%), decode unchanged.
 
+## Hardware dependence
+
+Measured on sm_121 only. How much this costs depends on L2 size: on GB10 (24 MB L2) the 84 MB A operand streams from DRAM
+once per N tile. On an RTX PRO 6000 (128 MB L2) it would mostly hit L2, so the penalty there is the 13 GB of L2→SM traffic
+and the low arithmetic intensity of a 128×16 tile, which is smaller but probably not zero. Every variant gives bit-identical
+output.
+
 ## Suggested fix
 
-Use a 128-wide N tile (2 stages fits comfortably in 99 KB) and put the N tiles on grid x so consecutive CTAs reuse the
-same A panel from L2. Our patch makes all three configurable and adds them to the compile-cache key:
+Rather than changing the constants for everyone, expose the tile and grid order to the existing tuner: add `tile_n` ∈ {16, 64,
+128}, `stages` and `raster` ∈ {M-fastest, N-fastest} to `MtpFeedbackConfig`, which today tunes only the norm parameters.
+Each GPU then measures its own best choice. On GB10 that is 128 / 2 / N-fastest; a 128-wide tile with 2 stages fits
+comfortably in 99 KB on any SM12x. Our patch makes all three configurable via env and adds them to the compile-cache key:
 <https://github.com/swesty/gb10-kernel-lab/blob/main/patches/b12x/mtp_feedback.tile-raster.diff>; harness:
 <https://github.com/swesty/gb10-kernel-lab/blob/main/scripts/mtp_gemm_harness.py>. Happy to open a PR with fixed defaults
 instead of env switches if preferred.

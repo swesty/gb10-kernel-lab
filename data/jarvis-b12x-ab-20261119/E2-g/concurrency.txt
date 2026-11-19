@@ -1,0 +1,12 @@
+--- c=16 8K in / 512 out x48
+Failed requests:                         0         
+Output token throughput (tok/s):         454.56    
+Mean TTFT (ms):                          2755.19   
+Median TTFT (ms):                        1488.36   
+Mean TPOT (ms):                          25.59     
+--- c=16 2K in / 1024 out x32
+Failed requests:                         0         
+Output token throughput (tok/s):         908.43    
+Mean TTFT (ms):                          1078.36   
+Median TTFT (ms):                        614.75    
+Mean TPOT (ms):                          11.33     

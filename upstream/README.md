@@ -14,6 +14,34 @@ Nothing below has been filed; drafts are in this folder.
 | [vllm-project/vllm](https://github.com/vllm-project/vllm) `main` | Mainline vLLM. Has its **own** Qwen4-Exp implementation (`vllm/models/qwen4_exp/`), consuming b12x through FlashInfer | `4ae5147` (2026-11-19) | PLE disk offload only (see below) |
 | [eugr/spark-vllm-docker](https://github.com/eugr/spark-vllm-docker) | Recipes | — | nothing to file |
 
+## Will the fixes regress SM120? (GB10 = sm_121 vs RTX PRO 6000 = sm_120)
+
+Same SM architecture (same ISA, `mma.sync` only, 100 KB shared memory per SM, same bank layout), very different memory
+system: GB10 has **48 SMs, 24 MB L2, ~273 GB/s** (238 GB/s achievable); the RTX PRO 6000 has **188 SMs, 128 MB L2,
+~1.8 TB/s**. Some findings are pure bugs that behave the same on both; others are tuning choices whose best value depends on
+SM count and L2 size, and those must not be "fixed" with GB10 constants.
+
+**How b12x picks configurations today.** b12x autotunes at preparation time (`b12x.preparation`: `Knob`, `TuningContract`):
+it measures candidate configs on the actual GPU and caches the winners per `DeviceIdentity` (vendor, compute capability,
+SM count, product name — so it already distinguishes GB10 from an RTX PRO 6000; L2 size is not part of the identity). The dense
+GEMM also has an explicit Spark policy, `_use_low_sm_dense_tactics(sm_count)` (≤ 64 SMs). **The problem is not hardware
+detection: the settings we changed are hard-coded constants the tuner never explores.** So the right upstream fix for the
+hardware-dependent items is to make them tunable (or gate them on the existing low-SM policy), letting each GPU measure its own
+best choice.
+
+| # | Finding | Depends on GPU memory system? | SM120 risk of our fix as-is | Upstream form that cannot regress SM120 | Validated on |
+|---|---|---|---|---|---|
+| B1 | MTP prefill tile 16 + M-major | **Yes.** The 84 MB A operand streams from DRAM on GB10 (24 MB L2) but fits in the RTX PRO 6000's 128 MB L2, so the penalty there is mostly L2 traffic and low arithmetic intensity, not DRAM | Low (all variants bit-identical; a 128-wide tile is the normal GEMM choice), but unmeasured | Add `tile_n` ∈ {16, 64, 128} and `raster` ∈ {M, N} as knobs in `MtpFeedbackConfig` (the contract already tunes the norm params); the tuner picks per device | sm_121 only |
+| B2 | BF16 swizzle on element offsets | **No.** Bank conflicts depend on the SM's shared-memory banks, identical on sm_120 and sm_121 | Very low: the fix only removes conflicts (wavefront counts are architecture-independent within SM12x) | Plain bug fix | sm_121 only |
+| B3 | Dense GEMM M-major walk; no tile knob in quantized mode | **Yes.** Whether A re-streams from DRAM depends on L2 size; best tile depends on SM count | **Real if hard-coded**: on 128 MB L2, out_proj's 25 MB A already fits, so forcing N-major could be neutral or slower | Add `raster_along_m` and the tile options to the tuner's candidate set for quantized-mode plans, or apply them only under the existing low-SM (Spark) policy | sm_121 only |
+| B4 | PLE disk reads synchronous; queue depth 64 | **No** (host/NVMe-bound; GPU-agnostic) | None: prefetched rows are used only on an exact ID match; queue depth affects only disk I/O | Prefetch API + configurable queue depth (best value is NVMe-dependent) | sm_121 only |
+| B5–B8 | GID −1, ready_queue, deterministic, cache identity | No | None | Plain fixes | — |
+| V1–V5 | vLLM fork: PLE queue depth/prefetch, fused q/k norm, GDN identity path, HC fusions, quantisation fusion | No: they remove copies and passes, not retune kernels | Very low (logprob-equivalent on sm_121; expected to help sm_120 too) | As drafted | sm_121 only |
+| M1 | mainline vLLM PLE disk reads | No | None | As drafted | — |
+
+**Before filing**, either validate the SM120 side (B1 and B3 above all, plus a quick B2 check) on an RTX PRO 6000, or file
+B1/B3 as "tunable choice; here is GB10 data" rather than "change the default", and state plainly that only sm_121 was measured.
+
 ## b12x kernel findings → file at **FlashInfer** and at **local-inference-lab/b12x**
 
 Same code in both trees (FlashInfer's copies differ only in formatting/imports, plus unrelated additions).

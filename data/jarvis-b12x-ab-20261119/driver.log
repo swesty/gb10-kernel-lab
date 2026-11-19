@@ -46,3 +46,17 @@ E,F retry with retention 6656
 [16:28:09] F2: ready after 160 s
 [16:29:15] F2: done; gpu mem now 858 MiB
 ALLDONE3
+[16:45:02] stopping prod
+[16:45:04] A-g: start image=vllm-openai:v0.30.0-pr55601 extra=
+[16:48:35] A-g: ready after 211 s
+[16:49:55] A-g: gate checks
+[16:52:42] A-g: done; gpu mem now 858 MiB
+[16:52:42] A-r: start image=vllm-openai:v0.30.0-pr55601 extra=
+[16:56:03] A-r: ready after 201 s
+[16:57:25] A-r: done; gpu mem now 858 MiB
+[16:57:25] E2-g: start image=vllm/vllm-openai:v0.34.0 extra=--prefix-cache-retention-interval 6656
+[17:00:06] E2-g: ready after 161 s
+[17:01:15] E2-g: gate checks
+[17:03:41] E2-g: done; gpu mem now 858 MiB
+[17:03:41] restoring prod
+[17:07:11] prod status 200 GATEDONE
