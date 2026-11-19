@@ -17,7 +17,7 @@ with teacher-forced log-probabilities, and the full set passed a mixed-load soak
 
 | Path | Contents |
 |---|---|
-| [`REPORT.md`](REPORT.md) | The full write-up: triage flow, hardware facts measured on GB10, each investigation (what, why, how, outcome), kernel deep dives, rejected ideas, corrections, tooling lessons |
+| [`REPORT.md`](REPORT.md) | The full write-up: triage flow, hardware facts measured on GB10, each investigation (what, why, how, outcome), closer looks at the kernels, rejected ideas, corrections, tooling lessons |
 | [`recipe/`](recipe/) | **Try it yourself**: a [spark-vllm-docker](https://github.com/eugr/spark-vllm-docker) recipe + mod that installs the changes (checksum-gated to the tested image), with a bench script |
 | [`patches/`](patches/) | Diffs per change, plus a snapshot of every patched file as deployed next to its original |
 | [`scripts/`](scripts/) | Harnesses (attention, MoE, MTP GEMM, dense GEMM), microbenchmarks (`mma_peak.cu`, `bw.py`), trace analysis (`gaps.py`, `cats.py`), A/B and logprob tools, patch writers |

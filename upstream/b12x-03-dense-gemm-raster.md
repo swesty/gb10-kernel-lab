@@ -68,4 +68,4 @@ make that unnecessary.
 
 Patches: <https://github.com/swesty/gb10-kernel-lab/tree/main/patches/b12x> (`dense_gemm.raster-n.diff`,
 `blockscaled_preparation.tile-override-and-prequant-hook.diff`). Harness and sweep data: `scripts/dense_gemm_*`,
-`data/gemm/` and `data/sm120/`. Write-up: §13.16, §13.19 and §13.21 of the REPORT in the same repository.
+`data/gemm/` and `data/sm120/`. Write-up: §13.16, §13.18 and §13.21 of the REPORT in the same repository.
