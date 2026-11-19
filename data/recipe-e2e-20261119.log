@@ -1,0 +1,34 @@
+=== 15:43:55 pause vllm_qwen38_next engine
+MemAvailable 118 GiB
+=== 15:44:00 run-recipe
+Recipe: Qwen3.8-Flash-Next-NVFP4 (Solo, GB10 prefill optimisations)
+  Qwen3.8-Flash-Next-NVFP4 on one DGX Spark with PLE disk offload and the gb10-kernel-lab prefill patches
+
+=== Launching ===
+Container: vllm-node-b12x
+Mods: mods/flashnext-gb10-fast
+Mode: Solo
+
+HEALTHY after 115 s
+--- vllm_node log highlights
+(EngineCore pid=335) INFO 11-19 15:45:39 [gpu_worker.py:812] Available KV cache memory: 13.38 GiB
+autotune lines: 0
+container: vllm_node  port: 8113
+--- prefill: 16K random tokens, 8 output tokens, 4 requests one at a time
+Failed requests:                         0         
+Output token throughput (tok/s):         1.52      
+Mean TTFT (ms):                          4922.85   
+Median TTFT (ms):                        4940.05   
+Mean TPOT (ms):                          49.04     
+--- decode: 1K in, 256 out, 4 requests one at a time (random tokens: MTP acceptance is low, compare runs only)
+Failed requests:                         0         
+Output token throughput (tok/s):         33.87     
+Mean TTFT (ms):                          280.99    
+Median TTFT (ms):                        280.15    
+Mean TPOT (ms):                          28.54     
+=== 15:47:07 teardown
+MemAvailable 118 GiB; restarting optimised engine
+launched patched 15:47:19 UTC
+HEALTHY 15:49:04 UTC (105 s)
+8112 healthy
+=== 15:49:12 done
