@@ -1380,22 +1380,38 @@ available (20.8 GiB at the start). The real-text greedy summary was coherent, re
 4.83–4.85 s, and logits stayed within noise against the original captures (top-1 agreement 96.54–96.77%,
 p99 0.40–0.45).
 
-One operational finding came from the recipe end-to-end test that ran just before. When the serving
-engine restarted while the test container was still releasing memory, its KV cache came out at 14.39 GiB
-instead of the usual ~15 GiB. b12x then found no cached GDN-prefill plans and began autotuning all 209 plans,
-with host memory falling (9 GiB available and dropping). The start was aborted and repeated with full
-memory, and the cache hit again (healthy in 105 s). The GDN prefill plans appear to be keyed on a value
-that depends on free memory at startup *[inference]*. `scripts/guarded_start.sh` now aborts a start that
-begins autotuning or runs low on memory.
+One operational finding came from the first recipe end-to-end test, which ran just before. Its container
+ran online and **moved the Hugging Face ref `refs/main` from revision `6909a5bed089` to `6c01ac378d22`** (the
+current upstream revision). That is the same mechanism as the `vllm bench serve` incident in §14. When the serving engine
+restarted, it resolved the model to `6c01ac`. b12x's preparation cache is keyed by an identity that includes
+the resolved model snapshot path (`~/.cache/b12x/compile/preparation/<hash>.json`, field
+`identity.namespace.model`). So no plans were cached, and it began autotuning all 209 GDN-prefill plans while host
+memory fell (9 GiB available and dropping). The start was aborted, and the next one reused the selections
+written in the meantime (healthy in 105 s). `scripts/guarded_start.sh` now aborts a start that begins
+autotuning or runs low on memory. (A first reading blamed the smaller KV cache of that start; the cache
+identity shows it was the revision. Engines on `6c01ac` get the usual 14.8–14.9 GiB KV cache.)
+
+The two revisions are the same weights: every shard both reference is the same blob, and both indexes list
+301,593 tensors and 110,091,566,076 bytes. `6c01ac` adds `"ple_embedding_dtype": "nvfp4"` to `config.json` and
+drops a few metadata files. The engine has served `6c01ac` since 15:18 UTC. The soak test above and the recipe
+tests below ran on it, with logits within noise against the `6909a5` captures and the same speed.
 
 **Recipe end-to-end test (passed).** `scripts/recipe_e2e.sh` ran the packaged recipe exactly as a user would:
 copy `recipe/` into a spark-vllm-docker checkout, `./run-recipe.sh qwen3.8-flash-next-nvfp4-solo-gb10fast --solo`,
 which creates a fresh `vllm_node` container from the tested image and applies the mod before vLLM starts
 (`data/recipe-e2e-20261119.log`). Result: healthy after 115 s with warm b12x caches (no autotuning);
 `bench.sh` measured random 16K TTFT **4,923 ms** (4,892 ms on the hand-launched build) and decode TPOT
-28.5 ms; 0 failed requests. The recipe container got a 13.4 GiB KV cache rather than ~15 GiB, probably because
-spark-vllm-docker's launcher leaves a little less memory free than the hand-launched engine; that does not
-affect speed *[inference: cause not checked]*. Afterwards the optimised engine was restored with the guarded start (healthy in 105 s).
+28.5 ms; 0 failed requests. The recipe container got a 13.4 GiB KV cache rather than ~15 GiB: vLLM derives the size from the memory
+free at startup, and a fresh spark-vllm-docker container gets less than the long-running hand-launched one
+*[inference: cause not checked]*. The recipe now pins it (below).
+
+**Pinned KV cache (adopted).** The recipe now passes `--kv-cache-memory-bytes 16106127360` (15 GiB, what the
+tested engine had), and spark-5's launcher does the same (`ARG` line in `extra.env`). vLLM then reserves exactly
+that much and skips its memory-profiling pass, so every start and every machine gets the same KV cache.
+Re-run of the recipe end-to-end test (`data/recipe-e2e-pinned-kv-20261119.log`): both the recipe container and the
+serving engine reported "reserved 15.0 GiB memory for KV Cache", **798,006 tokens**, against 13.4 GiB and
+~14.8 GiB before. Healthy after 95–110 s, 16K TTFT 4.91–4.93 s, 0 failed requests, and host memory never
+below 17 GiB during an 8-way concurrent load. Afterwards the optimised engine was restored with the guarded start (healthy in 105 s).
 
 ### 13.18 What is left after §13.17, assessed
 

@@ -25,9 +25,15 @@ for i in $(seq 1 480); do
   sleep 5
 done
 echo "--- vllm_node log highlights"
-docker logs vllm_node 2>&1 | grep -E "flashnext-gb10-fast|Available KV cache memory|^b12x autotuning|Traceback|Error" | sed -E 's/\r//' | awk '!seen[substr($0,1,60)]++' | head -12
+docker logs vllm_node 2>&1 | grep -E "flashnext-gb10-fast|KV cache memory|kv_cache_memory_bytes|GPU KV cache size|^b12x autotuning|Traceback|Error" | sed -E 's/\r//' | awk '!seen[substr($0,1,60)]++' | head -12
 echo "autotune lines: $(docker logs vllm_node 2>&1 | grep -c '^b12x autotuning')"
-[ $ok = 1 ] && CONTAINER=vllm_node bash $T/bench/bench.sh $PORT
+if [ $ok = 1 ]; then
+  ( minm=999; for i in $(seq 1 400); do m=$(mem); [ $m -lt $minm ] && minm=$m; echo $minm > /tmp/e2e-minmem; sleep 2; done ) & MW=$!
+  CONTAINER=vllm_node bash $T/bench/bench.sh $PORT
+  echo "--- concurrent load: 4-12K in / 256 out, 16 requests, c=8"
+  docker exec -e HF_HUB_OFFLINE=1 vllm_node vllm bench serve --backend vllm --base-url http://127.0.0.1:$PORT --model local-inference-lab/Qwen3.8-Flash-Next-NVFP4 --dataset-name random --ignore-eos --random-input-len 8192 --random-range-ratio 0.5 --random-output-len 256 --num-prompts 16 --max-concurrency 8 2>&1 | grep -E "Failed|Mean TTFT|Mean TPOT"
+  kill $MW 2>/dev/null; echo "lowest MemAvailable during load: $(cat /tmp/e2e-minmem) GiB"
+fi
 echo "=== $(date -u +%T) teardown"
 docker stop vllm_node >/dev/null 2>&1
 rm -f $SVD/recipes/qwen3.8-flash-next-nvfp4-solo-gb10fast.yaml; rm -rf $SVD/mods/flashnext-gb10-fast

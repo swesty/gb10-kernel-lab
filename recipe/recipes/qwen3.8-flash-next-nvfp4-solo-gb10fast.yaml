@@ -30,6 +30,10 @@ defaults:
   max_num_batched_tokens: 4096
   num_speculative_tokens: 4
   gpu_memory_utilization: 0.8
+  # Fixed KV cache size (15 GiB, what the tested engine had). vLLM otherwise derives it from the memory free at
+  # startup, which varies between launches (13.4 GiB in a fresh spark-vllm-docker container vs ~15 GiB here).
+  # A fixed size also keeps every start identical. Lower it if your machine runs other GPU work.
+  kv_cache_memory_bytes: 16106127360
 
 env:
   VLLM_PLE_TABLE_MEMORY: "disk"
@@ -97,4 +101,5 @@ command: |
     --tool-call-parser qwen3_xml \
     --enable-auto-tool-choice \
     --compilation-config '{{"pass_config":{{"fuse_act_quant":true}}}}' \
-    --gpu-memory-utilization {gpu_memory_utilization}
+    --gpu-memory-utilization {gpu_memory_utilization} \
+    --kv-cache-memory-bytes {kv_cache_memory_bytes}

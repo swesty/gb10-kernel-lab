@@ -1,0 +1,41 @@
+=== 16:07:50 pause vllm_qwen38_next engine
+MemAvailable 118 GiB
+=== 16:07:55 run-recipe
+Recipe: Qwen3.8-Flash-Next-NVFP4 (Solo, GB10 prefill optimisations)
+  Qwen3.8-Flash-Next-NVFP4 on one DGX Spark with PLE disk offload and the gb10-kernel-lab prefill patches
+
+=== Launching ===
+Container: vllm-node-b12x
+Mods: mods/flashnext-gb10-fast
+Mode: Solo
+
+HEALTHY after 110 s
+--- vllm_node log highlights
+(APIServer pid=217) INFO 11-19 16:08:07 [api_utils.py:286] non-default args: {'model_tag': 'local-inference-lab/Qwen3.8-Flash-Next-NVFP4', 'enable_auto_tool_choice': True, 'tool_call_parser': 'qwen3_xml', 'host': '0.0.0.0', 'port': 8113, 'model': 'local-inference-lab/Qwen3.8-Flash-Next-NVFP4', 'dtype': 'bfloat16', 'max_model_len': 262144, 'quantization': 'modelopt_mixed', 'load_format': 'b12x', 'reasoning_parser': 'qwen3', 'block_size': 16, 'gpu_memory_utilization': 0.8, 'kv_cache_memory_bytes': 16106127360, 'kv_cache_dtype': 'fp8', 'enable_prefix_caching': True, 'mamba_cache_mode': 'align', 'mm_encoder_tp_mode': 'data', 'max_num_batched_tokens': 4096, 'max_num_seqs': 8, 'enable_chunked_prefill': True, 'enable_flashinfer_autotune': False, 'moe_backend': 'b12x', 'linear_backend': 'b12x', 'speculative_config': {'method': 'mtp', 'num_speculative_tokens': 4}, 'compilation_config': {'mode': None, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': [], 'ir_enable_torch_wrap': None, 'splitting_ops': None, 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': None, 'compile_ranges_endpoints': None, 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': None, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': None, 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': None, 'pass_config': {'fuse_act_quant': True}, 'max_cudagraph_capture_size': None, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': None, 'static_all_moe_layers': []}, 'gdn_decode_kernel': 'b12x'}
+(EngineCore pid=337) INFO 11-19 16:09:24 [gpu_worker.py:638] Initial free memory 115.7 GiB, reserved 15.0 GiB memory for KV Cache as specified by kv_cache_memory_bytes config and skipped memory profiling. This does not respect the gpu_memory_utilization config. Only use kv_cache_memory_bytes config when you want manual control of KV cache memory size. If OOM'ed, check the difference of initial free memory between the current run and the previous run where kv_cache_memory_bytes is suggested and update it correspondingly.
+(EngineCore pid=337) INFO 11-19 16:09:24 [kv_cache_utils.py:2798] GPU KV cache size: 798,006 tokens, Maximum concurrency for 262,144 tokens per request: 3.04x
+autotune lines: 0
+container: vllm_node  port: 8113
+--- prefill: 16K random tokens, 8 output tokens, 4 requests one at a time
+Failed requests:                         0         
+Output token throughput (tok/s):         1.52      
+Mean TTFT (ms):                          4929.00   
+Median TTFT (ms):                        4947.12   
+Mean TPOT (ms):                          47.08     
+--- decode: 1K in, 256 out, 4 requests one at a time (random tokens: MTP acceptance is low, compare runs only)
+Failed requests:                         0         
+Output token throughput (tok/s):         33.92     
+Mean TTFT (ms):                          276.71    
+Median TTFT (ms):                        278.03    
+Mean TPOT (ms):                          28.51     
+--- concurrent load: 4-12K in / 256 out, 16 requests, c=8
+Failed requests:                         0         
+Mean TTFT (ms):                          9225.33   
+Mean TPOT (ms):                          123.08    
+lowest MemAvailable during load: 17 GiB
+=== 16:12:36 teardown
+MemAvailable 118 GiB; restarting optimised engine
+launched patched 16:12:48 UTC
+HEALTHY 16:14:23 UTC (95 s)
+8112 healthy
+=== 16:14:31 done

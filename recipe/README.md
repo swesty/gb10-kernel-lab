@@ -94,7 +94,13 @@ With all switches removed, the patched files behave like the stock ones.
   differs run to run with or without this recipe.
 - **PLE prefetch** only predicts ahead when a single request is prefilling; with mixed batches it simply
   reads as before. Correctness never depends on the prediction.
-- **Memory.** No meaningful extra memory (a 256 KB pinned buffer for prefetched row IDs).
+- **Memory.** The patches add no meaningful memory (a 256 KB pinned buffer for prefetched row IDs). The recipe
+  pins the KV cache at 15 GiB (`kv_cache_memory_bytes`, 798,006 tokens) so it is the same on every start;
+  without it vLLM sizes the KV cache from whatever memory is free at startup (13.4 GiB in a fresh container on
+  the test machine). Lower it if you run other GPU work on the box; host memory stayed above 17 GiB under load.
+- **Model revision.** Tested with Hugging Face revisions `6909a5bed089` and `6c01ac378d22` (same weights). b12x
+  caches its kernel choices per model snapshot, so when upstream publishes a new revision, the next start
+  re-autotunes. Keep the machine otherwise idle during that start.
 - **Newer images.** The mod refuses to patch them. To port, apply the diffs in `../patches/` by hand.
 - **Licence.** The files under `mods/flashnext-gb10-fast/files/` are modified copies of Apache-2.0 vLLM and
   b12x sources (plus one new file); the changes are documented in `../patches/` and `../REPORT.md`.
