@@ -1,8 +1,8 @@
-<!-- Draft issue for flashinfer-ai/flashinfer (experimental/b12x) and local-inference-lab/b12x. Not filed. -->
+<!-- Draft issue for flashinfer-ai/flashinfer (experimental/b12x). Not filed. -->
 # PLE `DiskTable`: synchronous disk reads leave the GPU idle at every prefill chunk; proposal for a prefetch API
 
 **Where:** `sequence/_shared/disk_table.py` (`DiskRowCache`, `read_rows`) and `sequence/ple_embedding/_disk.py`
-(`DiskTable`, `queue_depth: int = 64`) — present in FlashInfer `main` @ `d3f59f0` and local-inference-lab/b12x `master` @ `2cc7f66`.
+(`DiskTable`, `queue_depth: int = 64`) — present in FlashInfer `main` @ `d3f59f0` (also in the archived standalone local-inference-lab/b12x `master` @ `2cc7f66` / b12x 1.5.0).
 
 ## What we saw
 

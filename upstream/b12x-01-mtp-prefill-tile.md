@@ -1,8 +1,8 @@
-<!-- Draft issue for flashinfer-ai/flashinfer (experimental/b12x) and local-inference-lab/b12x. Not filed. -->
+<!-- Draft issue for flashinfer-ai/flashinfer (experimental/b12x). Not filed. -->
 # MTP feedback prefill projection re-reads its A operand once per 16-column tile (22× slower than needed)
 
 **Where:** `sequence/mtp_feedback/_cute_prefill.py` (`MTPPrefillBf16GemmKernel`, `_TILE_N` at line 29, `block_idx` at 280) —
-present in FlashInfer `main` @ `d3f59f0` (`flashinfer/experimental/b12x/`) and in local-inference-lab/b12x `master` @ `2cc7f66`.
+present in FlashInfer `main` @ `d3f59f0` (`flashinfer/experimental/b12x/`) (also in the archived standalone local-inference-lab/b12x `master` @ `2cc7f66` / b12x 1.5.0).
 
 ## What happens
 

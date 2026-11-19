@@ -9,7 +9,7 @@ Nothing below has been filed; drafts are in this folder.
 | Repository | What it holds | Status | Relevant here |
 |---|---|---|---|
 | **[flashinfer-ai/flashinfer](https://github.com/flashinfer-ai/flashinfer)** `flashinfer/experimental/b12x/` | The b12x kernels, now maintained inside FlashInfer. Mainline vLLM's docs say b12x "ships with FlashInfer (`flashinfer-python>=0.7.2`), so no separate install is needed". | active: several contributors, last b12x commits 2026-11-05/06; `main` @ `d3f59f0` | **all b12x findings** (verified present) |
-| [local-inference-lab/b12x](https://github.com/local-inference-lab/b12x) (`lukealonso/b12x` redirects here) | The original standalone b12x; still what the vLLM fork and eugr's `spark-vllm-b12x` image install (1.5.0) | last push 2026-10-06; `master` @ `2cc7f66` | all b12x findings (verified present) |
+| [local-inference-lab/b12x](https://github.com/local-inference-lab/b12x) (`lukealonso/b12x` redirects here) | The original standalone b12x; still what the vLLM fork and eugr's `spark-vllm-b12x` image install (1.5.0) | **archived** (read-only) since 2026-10-06; `master` @ `2cc7f66` | all b12x findings present, but cannot be filed here |
 | [local-inference-lab/vllm](https://github.com/local-inference-lab/vllm) `dev/karmic-kraken` | The vLLM fork eugr's b12x recipes build (Qwen3.8-Flash-Next model code using standalone b12x) | `8244d1c` (2026-10-15) | fork-side model/integration findings |
 | [vllm-project/vllm](https://github.com/vllm-project/vllm) `main` | Mainline vLLM. Has its **own** Qwen4-Exp implementation (`vllm/models/qwen4_exp/`), consuming b12x through FlashInfer | `4ae5147` (2026-11-19) | PLE disk offload only (see below) |
 | [eugr/spark-vllm-docker](https://github.com/eugr/spark-vllm-docker) | Recipes | — | nothing to file |
@@ -46,7 +46,9 @@ file as bugs. The dense GEMM changes (B3) are genuinely hardware-dependent: file
 and sm_120 numbers", not as a default change. Only one sm_120 part (RTX PRO 6000) was measured; a 5090-class part (170 SMs,
 96 MB L2) was not.
 
-## b12x kernel findings → file at **FlashInfer** and at **local-inference-lab/b12x**
+## b12x kernel findings → file at **FlashInfer** only
+
+local-inference-lab/b12x is **archived** (read-only since 2026-10-06; `gh repo view` → `isArchived: true`; its last commit is the migration README). Issues cannot be filed there. The "LIL b12x" column records that the frozen 1.5.0 code that Spark images still install has the same bugs.
 
 Same code in both trees (FlashInfer's copies differ only in formatting/imports, plus unrelated additions).
 
@@ -84,7 +86,7 @@ All still present on `dev/karmic-kraken`; all are prefill wins on Qwen3.8-Flash-
 
 [local-inference-lab/b12x#444](https://github.com/local-inference-lab/b12x/issues/444) (crash with > 3 parallel Flash Next
 requests, dual Spark): on one Spark (TP1, b12x 1.5.0 image) our soak ran 8-way concurrency with mixed 1–16K prompts
-without errors (REPORT §13.20).
+without errors (REPORT §13.20). The repository is archived, so this can no longer be posted there; mention it in the FlashInfer issues if relevant.
 
 ## Not upstream issues
 

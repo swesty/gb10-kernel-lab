@@ -16,7 +16,7 @@ vLLM-side items, all still present on `dev/karmic-kraken` @ `8244d1c`:
 1. **PLE disk table** (`b12x_ple.py`): `api.DiskTable(layout, shard_rows)` uses the default `queue_depth=64`; 256 gives
    −4.1% TTFT. Prefetching the next prefill chunk's rows while the current chunk computes (prediction in
    `model_state.prepare_inputs`, ID-checked, falls back on mismatch) gives another −6.2%. The GPU was otherwise idle
-   140–190 ms per chunk waiting on synchronous reads. (b12x side: flashinfer-ai/flashinfer#TBD, local-inference-lab/b12x#TBD.)
+   140–190 ms per chunk waiting on synchronous reads. (b12x side: flashinfer-ai/flashinfer#TBD.)
 2. **QSA q/k norm** (`b12x_qsa.py`): `B12xQSAAttention` never calls the existing `fused_qk_rmsnorm_rope_gate`. The eager
    `GemmaRMSNorm` chain + separate mRoPE + `output * sigmoid(gate)` cost ~4 ms per layer per chunk. Fused norm/RoPE plus
    a gate kernel that reads the gate in place: −5% prefill.
@@ -29,4 +29,4 @@ vLLM-side items, all still present on `dev/karmic-kraken` @ `8244d1c`:
    workspace hook): −2%.
 
 Plus b12x kernel issues found along the way (MTP feedback prefill tile, BF16 swizzle in two kernels, dense GEMM tile order),
-filed with FlashInfer (`experimental/b12x`) and local-inference-lab/b12x. Happy to turn any of 1–5 into PRs against whichever branch you prefer.
+filed with FlashInfer (`experimental/b12x`), where b12x now lives. Happy to turn any of 1–5 into PRs against whichever branch you prefer.
