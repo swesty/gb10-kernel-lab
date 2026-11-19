@@ -59,11 +59,11 @@ None of B1, B2, B3, B5, B6, B7 or B8 has an existing issue or PR in FlashInfer (
 | Repository | What it holds | Status | Relevant here |
 |---|---|---|---|
 | **[flashinfer-ai/flashinfer](https://github.com/flashinfer-ai/flashinfer)** `flashinfer/experimental/b12x/` | The b12x kernels, now maintained inside FlashInfer. Mainline vLLM's docs say b12x "ships with FlashInfer (`flashinfer-python>=0.7.2`), so no separate install is needed". | active; `main` @ `d3f59f0`. FlashInfer 0.7.3 ships the same `_cute_prefill.py` and `_selected_forward.py` as that commit | **all b12x findings** (verified present) |
-| [local-inference-lab/flashinfer](https://github.com/local-inference-lab/flashinfer) | A FlashInfer fork carrying extra b12x work, including the PLE/Engram host row cache (#44) | active (pushed 2026-11-19) | B4 |
-| [local-inference-lab/b12x](https://github.com/local-inference-lab/b12x) (`lukealonso/b12x` redirects here) | The original standalone b12x, still what the vLLM fork and eugr's `spark-vllm-b12x` image install (1.5.0) | **archived** (read-only) since 2026-10-06; `master` @ `2cc7f66` | all b12x findings present, but nothing can be filed here |
+| [local-inference-lab/flashinfer](https://github.com/local-inference-lab/flashinfer) | A FlashInfer fork carrying extra b12x work, including the PLE/Engram host row cache (#44). Since 2026-10-07 it is where eugr's `--exp-b12x` lane gets b12x: `build-and-copy.sh` pins `9873d7a` (2026-10-14), 89 commits ahead of and 2,548 behind upstream `main` | active (pushed 2026-11-19) | B4. B1 (`_TILE_N = 16`), B2 (both `allocate_tensor` swizzle sites) and the RoCE GID bug are all present at `9873d7a`, and B1 is still on the fork's `main` |
+| [local-inference-lab/b12x](https://github.com/local-inference-lab/b12x) (`lukealonso/b12x` redirects here) | The original standalone b12x (1.5.0). Our older fleet images (`glm53-b12x:ab86b70`, the Flash Next image) still install it. eugr's images no longer do: eugr `a05111a` (2026-10-07) replaced the standalone package with the LIL FlashInfer fork | **archived** (read-only) since 2026-10-06; `master` @ `2cc7f66` | all b12x findings present, but nothing can be filed here |
 | [local-inference-lab/vllm](https://github.com/local-inference-lab/vllm) `dev/karmic-kraken` | The vLLM fork that eugr's b12x recipes build | `8244d1c` (2026-10-15); last push 2026-10-27 | fork-side model and integration findings |
 | [vllm-project/vllm](https://github.com/vllm-project/vllm) `main` | Mainline vLLM, with its own Qwen4-Exp implementation (`vllm/models/qwen4_exp/`) consuming b12x through FlashInfer | `4ae5147` (2026-11-19) | PLE disk offload only |
-| [eugr/spark-vllm-docker](https://github.com/eugr/spark-vllm-docker) | Recipes | n/a | nothing to file |
+| [eugr/spark-vllm-docker](https://github.com/eugr/spark-vllm-docker) | Recipes and image builds. `--exp-b12x` builds the vLLM fork above plus the LIL FlashInfer fork @ `9873d7a`; published as `eugr/spark-vllm-b12x` (`latest` = `nightly-20261102`) | `ce3257d` (2026-11-19) | nothing to file; fixes reach this lane only after LIL syncs its fork and eugr moves the pin |
 
 ## Will the fixes regress SM120? (GB10 = sm_121 vs RTX PRO 6000 = sm_120), measured 2026-11-19
 
@@ -104,7 +104,7 @@ part (170 SMs, 96 MB L2) was not tested.
 
 local-inference-lab/b12x is **archived** (read-only since 2026-10-06; `gh repo view` reports `isArchived: true`, and its
 last commit is the migration README), so nothing can be filed there. The "LIL b12x" column records that the frozen 1.5.0
-code that Spark images still install has the same bugs. The two trees hold the same code; FlashInfer's copies differ only
+code that our older Spark images still install has the same bugs. The two trees hold the same code; FlashInfer's copies differ only
 in formatting and imports, plus unrelated additions.
 
 | # | Finding | FlashInfer `main` | LIL b12x `master` | Evidence | Draft | Priority |
