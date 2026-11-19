@@ -1393,9 +1393,9 @@ copy `recipe/` into a spark-vllm-docker checkout, `./run-recipe.sh qwen3.8-flash
 which creates a fresh `vllm_node` container from the tested image and applies the mod before vLLM starts
 (`data/recipe-e2e-20261119.log`). Result: healthy after 115 s with warm b12x caches (no autotuning);
 `bench.sh` measured random 16K TTFT **4,923 ms** (4,892 ms on the hand-launched build) and decode TPOT
-28.5 ms; 0 failed requests. The recipe container got a 13.4 GiB KV cache rather than ~15 GiB, because
+28.5 ms; 0 failed requests. The recipe container got a 13.4 GiB KV cache rather than ~15 GiB, probably because
 spark-vllm-docker's launcher leaves a little less memory free than the hand-launched engine; that does not
-affect speed. Afterwards the optimised engine was restored with the guarded start (healthy in 105 s).
+affect speed *[inference: cause not checked]*. Afterwards the optimised engine was restored with the guarded start (healthy in 105 s).
 
 ### 13.18 What is left after §13.17, assessed
 
