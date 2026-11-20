@@ -362,7 +362,7 @@ Before changing the kernel I needed a way to run it outside the engine. `attn_ha
 4,096-row chunks). It generates selections the way QSA does (512 groups of 4 in score order, plus a tail) and
 checks sampled rows against an FP32 reference. I validated the harness five ways:
 
-- Correctness: the max abs error is 1e-4 (0.8% relative), and the LSE matches exactly.
+- Correctness: the max abs error is 1e-4 (0.8% relative), and the LSE error stays below 1e-4.
 - **It matches live**: 3.4 µs per row per layer in the harness, against 3.85 µs measured live.
 - The selection pattern (shared groups, independent, random) changes the time by < 1%, so the kernel is not
   bound by locality.
@@ -483,7 +483,7 @@ The table below shows the kernel time after each fix, measured in one run.
 
 On the decode split path (including the merge), 1 row went from 48.5 to 49.6 µs, 5 rows from 48.4 to 48.0,
 20 rows from 96.2 to 77.8, and 40 rows from 191.2 to 147.7. All variants have a max error of 1e-4 against FP32,
-and the LSE matches exactly.
+and an LSE error below 1e-4.
 
 ### 9.9 Online softmax: already present, still needed tuning
 
@@ -518,7 +518,7 @@ fixing how this one ran.
 
 **Result:** the softmax is no longer a one-warp serial section, and together with the other two fixes the
 kernel went from 14.04 ms to 7.31 ms at 16K (§9.8). Numerically it is the same algorithm: the max error is 1e-4
-against FP32, the LSE matches exactly, and the live logits stay within the engine's own run-to-run noise (§9.4).
+against FP32, the LSE error stays below 1e-4, and the live logits stay within the engine's own run-to-run noise (§9.4).
 
 **What remains:** the shared-memory round trip for `P`. FlashAttention-2 avoids it by splitting work across
 warps by query rows. Each warp owns its rows' QK and PV, and the QK accumulator layout feeds PV directly from
