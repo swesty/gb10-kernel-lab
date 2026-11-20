@@ -55,8 +55,8 @@ itself measured 2,958 to 2,882 µs at 16K (−2.6%) and 2,957 to 2,795 µs at 32
 and 1–6% on the RTX PRO 6000; kv_warps = 1 is unchanged on GB10 and within the noise of that shared run on the RTX PRO
 6000.
 
-**Correctness.** Maximum absolute error against an FP32 reference is unchanged (1e-4), and the LSE matches exactly, on
-both GPUs.
+**Correctness.** Maximum absolute error against an FP32 reference is 1e-4 before and after, and the LSE error stays
+below 1e-4 (the harness prints 0.0000), on both GPUs.
 
 **How I measured.** RTX PRO 6000: FlashInfer 0.7.3 from the `vllm/vllm-openai:v0.34.0` image (its
 `_selected_forward.py` is byte-identical to main `d3f59f0`) with this file dropped in. GB10: a DGX Spark running

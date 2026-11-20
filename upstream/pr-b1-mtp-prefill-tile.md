@@ -40,7 +40,8 @@ launches, each after an L2 flush (96 MB on GB10, 512 MB on the RTX PRO 6000):
 | cuBLAS BF16, 4,096 tokens, no epilogue | 2,221 | | 549 | |
 
 At 256 tokens and up the new tile is 1.8–21× faster on GB10 and 2.2–2.8× faster on the RTX PRO 6000. At 16 tokens it
-costs 8–20 µs per call, because 20 wide tiles leave most SMs idle where 160 narrow ones did not. I kept one default rather
+costs 8–20 µs per call, because 20 wide tiles leave most SMs idle where 160 narrow ones did not. At 64 tokens it is about
+even: 8 µs faster on GB10 and 2 µs slower on the RTX PRO 6000. I kept one default rather
 than dispatching on the live row count, because the kernel is compiled per capacity and the cost is small next to the
 saving; happy to add a small-M path if you would rather have it.
 
@@ -97,8 +98,9 @@ Thank you for contributing to FlashInfer! Before we review your pull request, pl
 The new test passes on both GPUs (3 of 3 on sm_121 and sm_120). On FlashInfer 0.7.3, whose `test_mtp_feedback.py` is
 identical to main's, 8 existing tests in that file fail with `AttributeError: 'Binding' object has no attribute
 'execution'` both with and without this change (no source file in `mtp_feedback/` defines `execution`). With this change
-the file gives 12 passed, 8 failed, 1 skipped, against 9 passed, 8 failed, 1 skipped before: the same 8 failures, plus the
-3 new tests. I can fix those 8 tests in a separate PR.
+the file gives 12 passed, 8 failed, 1 skipped on both GPUs, against 9 passed, 8 failed, 1 skipped before: the same 8
+failures by name, plus the 3 new tests (logs in `data/pr-validation-20261119/*/pytest_mtp_*.txt`). I can fix those 8
+tests in a separate PR.
 
 ## 🔬 Experimental Track
 
@@ -120,6 +122,10 @@ tests/experimental/b12x/sequence/test_mtp_feedback.py
 
 - This is a small improvement to an existing experimental backend, so I linked the existing tracking issue rather than
   opening a new one. There are no core changes, and no new example (the existing MTP feedback path exercises it).
+- The wider tile raises register use, so I checked for spills with Nsight Compute on both GPUs. At 4,096 tokens
+  (`tile_m` 128) the kernel uses 164 registers per thread, and at 16 tokens (`tile_m` 64) it uses 220, against 56 for the
+  16-wide tile. Local loads and stores are zero in every case, so nothing spills. Raw counters:
+  `data/pr-validation-20261119/*/regcheck_*.csv`.
 - The tile choice is derived from `output_columns`, which is already in the in-process cache key, so `_KERNEL_CACHE` is
   unchanged; only the disk compile-cache version moves.
 - The order and tile could also become tuner options in `MtpFeedbackConfig`. I kept this PR to a fixed default because
