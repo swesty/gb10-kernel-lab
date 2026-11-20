@@ -126,3 +126,5 @@ tests/experimental/b12x/attention/test_qsa_sparse_gqa.py
   where the layout comes from `make_smem_layout_atom` or `tile_to_shape` of a swizzled atom.
 - Follow-ups I can send: the store-order change that removes most of the remaining store conflicts, the software
   pipelining and split-QK changes (together 1.83× at 16K on the RTX PRO 6000), and a measurement of `bf16_gemv`.
+- `_selected_forward.py` is byte-identical in the `local-inference-lab/flashinfer` fork at `9873d7a`, which eugr's
+  `spark-vllm-b12x` images build, so this patch also applies there unchanged.

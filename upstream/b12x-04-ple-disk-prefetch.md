@@ -3,7 +3,7 @@
 
 **Where:** `sequence/_shared/disk_table.py` (`DiskRowCache`, `read_rows`) and `sequence/ple_embedding/_disk.py`
 (`DiskTable`, `queue_depth: int = 64`), FlashInfer `main` @ `d3f59f0`. The same code is in the archived standalone
-b12x 1.5.0.
+b12x 1.5.0 and in the `local-inference-lab/flashinfer` fork at `9873d7a`, which eugr's `spark-vllm-b12x` images build.
 
 I serve Qwen3.8-Flash-Next-NVFP4 on a DGX Spark with `VLLM_PLE_TABLE_MEMORY=disk`, because the n-gram table (28.9 GB,
 320M NVFP4 rows) does not fit in memory next to the model. Kernel-time tables showed nothing unusual, but a gap histogram of

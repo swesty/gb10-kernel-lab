@@ -3,7 +3,8 @@
 
 Environment: b12x 1.5.0 (`a321f9a6`), vLLM `local-inference-lab/vllm` `ab86b707`, GB10 (sm_121), CUDA 13.0. I confirmed
 item 1 is still present in FlashInfer `main` @ `d3f59f0`. Items 2 to 4 were seen on 1.5.0 and I have not re-run them
-against FlashInfer; each one says so below.
+against FlashInfer; each one says so below. Item 1 is also present in the `local-inference-lab/flashinfer` fork at
+`9873d7a`, which eugr's `spark-vllm-b12x` images build, and the item 2 `ready_queue` code path is there too (not re-run).
 
 ## 1. `NCCL_IB_GID_INDEX=-1` is taken literally (`comm/roce/roce_oneshot.py:88`)
 

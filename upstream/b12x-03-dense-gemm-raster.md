@@ -2,7 +2,8 @@
 # Dense GEMM: the persistent tile walk always goes along M, and quantized mode exposes no tile choice
 
 **Where:** `_lib/dense_gemm.py`, `DenseGemmKernel._compute_grid` (line 5054), and `gemm/blockscaled/_preparation.py`
-(`_lower_dense_with_hint`), FlashInfer `main` @ `d3f59f0`. The same code is in the archived standalone b12x 1.5.0.
+(`_lower_dense_with_hint`), FlashInfer `main` @ `d3f59f0`. The same code is in the archived standalone b12x 1.5.0
+and in the `local-inference-lab/flashinfer` fork at `9873d7a`, which eugr's `spark-vllm-b12x` images build (`_compute_grid` is identical there, at line 5072).
 
 These came out of profiling the MXFP8 dense projections of Qwen3.8-Flash-Next at prefill size (M = 4,096) on a DGX Spark
 (GB10: 48 SMs, 24 MB L2, measured FP8 `mma.sync` peak 249 TFLOPS). Both are tuning choices whose best value depends on the

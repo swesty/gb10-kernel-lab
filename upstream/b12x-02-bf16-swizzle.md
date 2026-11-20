@@ -2,7 +2,7 @@
 # BF16 shared-memory tiles apply the 128-byte swizzle to element offsets, causing 2-way bank conflicts
 
 **Where:** FlashInfer `main` @ `d3f59f0` under `flashinfer/experimental/b12x/` (the same code is in the archived
-standalone b12x 1.5.0):
+standalone b12x 1.5.0 and in the `local-inference-lab/flashinfer` fork at `9873d7a`, which eugr's `spark-vllm-b12x` images build):
 
 - `attention/paged/_selected_forward.py`: the Q, K, V and P tiles of the selected-position (QSA) paged attention kernel.
 - `gemm/bf16_gemv/_kernel.py:389–390`: `shared_a` and `shared_b`.

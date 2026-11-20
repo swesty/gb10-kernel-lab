@@ -3,7 +3,7 @@
 
 **Where:** `sequence/mtp_feedback/_cute_prefill.py` (`MTPPrefillBf16GemmKernel`; `_TILE_N` at line 29, `block_idx` at
 line 280), FlashInfer `main` @ `d3f59f0` under `flashinfer/experimental/b12x/`. The same code is in the archived
-standalone b12x 1.5.0.
+standalone b12x 1.5.0 and in the `local-inference-lab/flashinfer` fork at `9873d7a`, which eugr's `spark-vllm-b12x` images build.
 
 While profiling Qwen3.8-Flash-Next-NVFP4 on a DGX Spark (GB10, sm_121), I found one kernel taking **61 ms of every
 4,096-token prefill chunk**, about 230 ms of a 16K-token prefill. It is the hidden projection of `mtp_feedback`, and it

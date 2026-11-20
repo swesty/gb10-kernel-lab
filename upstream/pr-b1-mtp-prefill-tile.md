@@ -124,3 +124,5 @@ tests/experimental/b12x/sequence/test_mtp_feedback.py
   unchanged; only the disk compile-cache version moves.
 - The order and tile could also become tuner options in `MtpFeedbackConfig`. I kept this PR to a fixed default because
   the 128-wide tile wins on both GPUs I measured from 256 tokens up.
+- `_cute_prefill.py` is byte-identical in the `local-inference-lab/flashinfer` fork at `9873d7a`, which eugr's
+  `spark-vllm-b12x` images build, so this patch also applies there unchanged.

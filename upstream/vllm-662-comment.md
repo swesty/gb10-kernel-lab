@@ -28,7 +28,9 @@ The vLLM-side items below are all still present on `dev/karmic-kraken` @ `8244d1
    workspace hook, and gave −1.5% prefill (−2.0% TTFT).
 
 I also found three b12x kernel issues along the way (the MTP feedback prefill tile, the BF16 swizzle in two kernels, and
-the dense GEMM tile order) and am filing those with FlashInfer, where b12x now lives. I checked the hardware-dependent
+the dense GEMM tile order) and am filing those with FlashInfer, where b12x now lives. All three are also in
+`local-inference-lab/flashinfer` at `9873d7a`, the commit eugr's current `spark-vllm-b12x` images build, so the fixes
+reach users of these images only once that fork picks them up. I checked the hardware-dependent
 ones on an RTX PRO 6000 too, so the suggested fixes do not regress sm_120.
 
 Everything (the report, patches, harnesses, Nsight reports and a spark-vllm-docker recipe) is at
