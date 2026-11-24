@@ -1,7 +1,9 @@
 <!--
 Draft PR for flashinfer-ai/flashinfer. Not opened.
-Title: perf(experimental/b12x): use a 128-wide N tile and N-fastest grid in the MTP feedback prefill GEMM
-Base: main @ d3f59f0. Patch: pr-b1-mtp-prefill-tile.diff (applies cleanly; adds one test).
+Title: perf(experimental/b12x): 128-wide N tile, N-fastest grid and proxy fence in the MTP feedback prefill GEMM
+Base: main @ 560d7e2 (2026-11-23). Patch: pr-b1-mtp-prefill-tile.diff (applies cleanly; adds one test; passes
+ruff 0.12.8 format and check, the version FlashInfer's pre-commit pins). The two files it touches are byte-identical
+at 560d7e2, v0.7.6rc1 (691183f) and d3f59f0.
 Before opening: review every changed line yourself, run FlashInfer's pre-commit hooks in a real checkout,
 and fill in the commit SHA the tests ran on. The body below follows the default template unchanged.
 -->
@@ -22,8 +24,10 @@ This PR:
   64, else 16, so every width the kernel accepted before still compiles;
 - uses 2 stages at tile 128 (3 at 64 and 16), which keeps shared memory well under 99 KB;
 - puts the N tiles on grid x, so blocks that share an A panel run back to back and reuse it from L2;
+- adds a generic-to-async proxy fence before each stage release in the mainloop, the same fix and the same CUDA 13.4
+  gate as #9759 (see "Proxy fence" below);
 - bumps the `sequence.mtp_feedback.prefill_bf16_gemm` compile-cache version from 3 to 4, so binaries compiled with the
-  old tile are not reused;
+  old tile or without the fence are not reused;
 - adds `test_prefill_gemm_tile_n_choice_matches_reference`, which checks each tile width (128, 64 and 16) against a
   PyTorch reference with a partial live-row count.
 
@@ -57,6 +61,39 @@ On the RTX PRO 6000 the two orders are within 5% at every size, so N-fastest cos
 At 16 and 64 tokens, the patched kernel matches the reference on exactly the same fraction of elements as the current
 kernel (the reference there is a different cuBLAS algorithm).
 
+**Proxy fence.** The table above is the tile and grid change alone; the fence came later and its cost is measured
+separately below. In the mainloop, each stage is read with `ldmatrix` (the generic proxy) and refilled by TMA (the async
+proxy), and the consumer hands it back with a plain mbarrier arrive. That arrive doesn't order the `ldmatrix` reads
+before the TMA write, which is the hazard #9759 fixes in the b12x dense GEMM and #7785 fixed in the GDN delta-rule
+kernel after an overwrite was observed there. #9759, #9760 and #9761 don't touch this file. In the current kernel's SASS
+(b12x 1.5.0, cutlass-dsl 4.7.0 with `cutlass.CUDA_VERSION` 13.3, sm_121a, K = 2,560), all 40 consumer releases are
+issued while some of that k-block's `LDSM` results are still unread, and none is fenced. That holds for the 16-wide
+tile and for this PR's 128-wide tile. Since this PR already changes the pipeline depth in that loop, it adds the fence
+#9759 uses, behind the same `(13, 4)` gate. The gate is needed: on CUDA 13.3 the ungated
+`fence.proxy.async::generic.release.sync_restrict::shared::cluster::read.cluster` fails in libNVVM ("NVVM backend
+compilation failed"), so older toolkits get `cute.arch.fence_proxy("async.shared", space="cta")`.
+
+With 13.3, ptxas puts `MEMBAR.ALL.CTA` then `FENCE.VIEW.ASYNC.S` after the last `LDSM` of every k-block, seven HMMAs
+before the arrive. I checked that in all 12 MTP GEMM kernels the GB10 run compiled (harness sizes plus the test file):
+40 of 40 releases fenced in each, against 0 of 40 without the patch. Registers and shared memory don't change (164 and
+220 registers per thread at 4,096 and 16 tokens, zero local loads and stores). Kernel time on GB10 at tile 128, two
+alternating runs per row, each the median of 20 launches after a 96 MB L2 flush:
+
+| Tokens | Without fence (µs) | With fence (µs) | Change |
+|---|---|---|---|
+| 16 | 130, 127 | 128, 125 | none (within noise) |
+| 64 | 141, 139 | 141, 141 | +0.7% |
+| 256 | 294, 292 | 292, 297 | +0.5% |
+| 1,024 | 787, 790 | 799, 796 | +1.1% |
+| 4,096 | 2,718, 2,717 | 2,732, 2,785 | +1.5% |
+
+A separate A/B in the serving container (three alternating runs per row) gave +1.0% back to back and +0.9% after an L2
+flush at 4,096 tokens, and +0.4% / −0.4% for the old 16-wide tile. At 4,096 tokens that's about 40 µs per prefill chunk.
+Output matches the BF16 reference bit for bit with and without the fence. I haven't seen corruption without it either
+(0 of 500 repeated launches differed from the first), so this is a memory-model fix rather than a fix for a failure I
+reproduced. On CUDA 13.4 and later the fence should compile to nothing, but I have no 13.4 toolkit here to confirm
+that, and I haven't re-run the fence on the RTX PRO 6000.
+
 **How I measured.** GB10: a DGX Spark running standalone b12x 1.5.0 (whose `_cute_prefill.py` differs from main only
 in formatting) with this file dropped in, cutlass-dsl 4.7.0, torch 2.13 cu130, beside a running vLLM engine. RTX PRO
 6000: FlashInfer 0.7.3 from the `vllm/vllm-openai:v0.34.0` image (its `_cute_prefill.py` is byte-identical to main
@@ -64,14 +101,16 @@ in formatting) with this file dropped in, cutlass-dsl 4.7.0, torch 2.13 cu130, b
 events, not `bench_gpu_time`; I can re-run with `flashinfer.testing.bench_gpu_time(..., enable_cupti=True)` if you
 prefer. Harness, raw output and full write-up:
 https://github.com/swesty/gb10-kernel-lab (`scripts/mtp_gemm_harness.py`, `data/pr-validation-20261119/`,
-`data/sm120/`, REPORT §13.15 and §13.21).
+`data/pr-validation-20261123-fence/`, `data/sm120/`, REPORT §13.15 and §13.21).
 
 I found and fixed this with an AI coding agent (Claude Code) doing most of the profiling and patch work; I reviewed the
 change and can walk through it. Thanks to the b12x authors for the kernels.
 
 ## 🔍 Related Issues
 
-None found for this kernel. Part of the experimental b12x integration tracked in #6909.
+None found for the tile and grid order. Part of the experimental b12x integration tracked in #6909. The fence follows
+#9759 (with #9760 and #9761 for the MoE and attention kernels), which doesn't cover this file. If #9759 lands first
+with a shared helper, I'll switch this call site to it.
 
 ## 🚀 Pull Request Checklist
 
@@ -99,8 +138,10 @@ The new test passes on both GPUs (3 of 3 on sm_121 and sm_120). On FlashInfer 0.
 identical to main's, 8 existing tests in that file fail with `AttributeError: 'Binding' object has no attribute
 'execution'` both with and without this change (no source file in `mtp_feedback/` defines `execution`). With this change
 the file gives 12 passed, 8 failed, 1 skipped on both GPUs, against 9 passed, 8 failed, 1 skipped before: the same 8
-failures by name, plus the 3 new tests (logs in `data/pr-validation-20261119/*/pytest_mtp_*.txt`). I can fix those 8
-tests in a separate PR.
+failures by name, plus the 3 new tests (logs in `data/pr-validation-20261119/*/pytest_mtp_*.txt`). With the fence
+added I re-ran the file on GB10 and got the same result: 12 passed, the same 8 failures by name, 1 skipped
+(`data/pr-validation-20261123-fence/gb10-spark5/pytest_fenced.txt`). I haven't re-run it with the fence on sm_120. I
+can fix those 8 tests in a separate PR.
 
 ## 🔬 Experimental Track
 
@@ -125,7 +166,11 @@ tests/experimental/b12x/sequence/test_mtp_feedback.py
 - The wider tile raises register use, so I checked for spills with Nsight Compute on both GPUs. At 4,096 tokens
   (`tile_m` 128) the kernel uses 164 registers per thread, and at 16 tokens (`tile_m` 64) it uses 220, against 56 for the
   16-wide tile. Local loads and stores are zero in every case, so nothing spills. Raw counters:
-  `data/pr-validation-20261119/*/regcheck_*.csv`.
+  `data/pr-validation-20261119/*/regcheck_*.csv`. With the fence the GB10 numbers are unchanged
+  (`data/pr-validation-20261123-fence/gb10-spark5/regcheck.csv`).
+- The fence uses the same gate and the same two instructions as #9759, so if #9759 merges first with a shared helper
+  the change here is a one-line swap. If you'd rather keep this PR to the tile and grid only, I can split the fence
+  into its own PR.
 - The tile choice is derived from `output_columns`, which is already in the in-process cache key, so `_KERNEL_CACHE` is
   unchanged; only the disk compile-cache version moves.
 - The order and tile could also become tuner options in `MtpFeedbackConfig`. I kept this PR to a fixed default because

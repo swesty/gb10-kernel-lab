@@ -1,0 +1,5 @@
+08966bf46a6b instrs=6104 consumer_releases=40 fenced_after_last_load=0 spec=['(3, 12, 3)']
+4d84b4dc26a7 instrs=6128 consumer_releases=40 fenced_after_last_load=0 spec=['(3, 12, 3)']
+6fbe83b0b049 instrs=6104 consumer_releases=40 fenced_after_last_load=0 spec=['(3, 12, 3)']
+739bc45c0341 instrs=6104 consumer_releases=40 fenced_after_last_load=0 spec=['(3, 12, 3)']
+c247996ff311 instrs=6104 consumer_releases=40 fenced_after_last_load=0 spec=['(3, 12, 3)']

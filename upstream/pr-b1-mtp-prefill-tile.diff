@@ -1,5 +1,5 @@
 diff --git a/flashinfer/experimental/b12x/sequence/mtp_feedback/_cute_prefill.py b/flashinfer/experimental/b12x/sequence/mtp_feedback/_cute_prefill.py
-index e7b09be..06d0060 100644
+index e7b09be..d4be3bb 100644
 --- a/flashinfer/experimental/b12x/sequence/mtp_feedback/_cute_prefill.py
 +++ b/flashinfer/experimental/b12x/sequence/mtp_feedback/_cute_prefill.py
 @@ -26,9 +26,12 @@ from ._cute_prefill_config import supports_prefill, tensors_support_prefill
@@ -138,7 +138,24 @@ index e7b09be..06d0060 100644
              accumulator = cute.make_rmem_tensor(accumulator_shape, Float32)
              accumulator.fill(0.0)
              copy_atom_a = cute.make_copy_atom(
-@@ -376,7 +386,7 @@ class MTPPrefillBf16GemmKernel:
+@@ -370,13 +380,24 @@ class MTPPrefillBf16GemmKernel:
+                     copy_a,
+                     copy_b,
+                 )
++                # The stage was read with ldmatrix (generic proxy) and is refilled by
++                # TMA (async proxy). The mbarrier arrive alone does not order those
++                # reads before the refill, so fence them first (same fix as #9759).
++                if cutlass.const_expr(
++                    (cutlass.CUDA_VERSION.major, cutlass.CUDA_VERSION.minor) >= (13, 4)
++                ):
++                    cute.arch.inline_ptx(
++                        "fence.proxy.async::generic.release.sync_restrict::shared::cluster::read.cluster;"
++                    )
++                else:
++                    cute.arch.fence_proxy("async.shared", space="cta")
+                 load_pipeline.consumer_release(consumer_state)
+                 consumer_state.advance()
+ 
              accumulator_mn = _reshape_acc_to_mn(accumulator)
              coordinate_mn = _reshape_acc_to_mn(
                  thread_mma.partition_C(
@@ -147,7 +164,7 @@ index e7b09be..06d0060 100644
                  )
              )
              for accumulator_m in cutlass.range_constexpr(
-@@ -387,7 +397,7 @@ class MTPPrefillBf16GemmKernel:
+@@ -387,7 +408,7 @@ class MTPPrefillBf16GemmKernel:
                  ):
                      coordinate = coordinate_mn[accumulator_m, accumulator_n]
                      row = m_tile * Int32(self.tile_m) + coordinate[0]
@@ -156,7 +173,7 @@ index e7b09be..06d0060 100644
                      value = accumulator_mn[accumulator_m, accumulator_n]
                      if cutlass.const_expr(self.add_token_path):
                          token = row // Int32(self.streams)
-@@ -405,7 +415,7 @@ class MTPPrefillBf16GemmKernel:
+@@ -405,7 +426,7 @@ class MTPPrefillBf16GemmKernel:
          elif warp_index == Int32(self.producer_warp):
              producer_state = pipeline.make_pipeline_state(
                  pipeline.PipelineUserType.Producer,
@@ -165,7 +182,7 @@ index e7b09be..06d0060 100644
              )
              for reduction_tile in cutlass.range_constexpr(self.reduction_tiles):
                  load_pipeline.producer_acquire(producer_state)
-@@ -525,7 +535,7 @@ def compile_mtp_prefill_bf16_gemm(
+@@ -525,7 +546,7 @@ def compile_mtp_prefill_bf16_gemm(
                  current_cuda_stream(),
                  compile_spec=KernelCompileSpec.from_key(
                      "sequence.mtp_feedback.prefill_bf16_gemm",

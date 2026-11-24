@@ -1,0 +1,8 @@
+cutlass.CUDA_VERSION DSLCudaVersion(major=13, minor=3)
+error: NVVM backend compilation failed
+  error: libNVVM failed while compiling generated device IR.
+  note: target architecture: sm_121a
+  note: backend log:
+        NVVM backend compilation failed
+  suggestion: check that CUDA_TOOLKIT_PATH is set correctly and that the CUDA toolkit supports
+              target architecture sm_121a; rerun with IR dump flags if backend context is needed

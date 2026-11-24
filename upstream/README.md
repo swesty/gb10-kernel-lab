@@ -3,13 +3,15 @@
 These are the findings from this project, sorted by where they belong and what I plan to do with each one. I checked
 every finding on 2026-11-19 against the current code of each repository it could apply to, not only against the image I
 tested (standalone b12x 1.5.0 plus the vLLM fork at `ab86b707`). I also searched each project for existing issues and
-PRs, and read both projects' contribution rules. Nothing has been filed yet.
+PRs, and read both projects' contribution rules. On 2026-11-23 I re-checked the FlashInfer sites against `main` @
+`560d7e2` and `v0.7.6rc1` (`691183f`): every b12x bug site is unchanged, and the seven files involved have had no
+commits since 2026-11-18. Nothing has been filed yet.
 
 ## Filing plan
 
 | # | Finding | Action | Where | Draft | Status |
 |---|---|---|---|---|---|
-| B1 | MTP feedback prefill tile (`_TILE_N = 16`, M-major grid) | **PR** | flashinfer-ai/flashinfer | [pr-b1-mtp-prefill-tile.md](pr-b1-mtp-prefill-tile.md), [patch](pr-b1-mtp-prefill-tile.diff); issue text kept in [b12x-01](b12x-01-mtp-prefill-tile.md) | draft ready; see the PR draft for validation |
+| B1 | MTP feedback prefill tile (`_TILE_N = 16`, M-major grid), plus the missing proxy fence before each stage release | **PR** | flashinfer-ai/flashinfer | [pr-b1-mtp-prefill-tile.md](pr-b1-mtp-prefill-tile.md), [patch](pr-b1-mtp-prefill-tile.diff); issue text kept in [b12x-01](b12x-01-mtp-prefill-tile.md) | draft ready, rebased on `560d7e2`; fence added and re-validated on GB10 2026-11-23 (not yet on sm_120); also comment on #9759 that its sweep misses this file |
 | B2 | BF16 swizzle on element offsets (selected-position attention) | **PR** (layout atoms only) | flashinfer-ai/flashinfer | [pr-b2-selected-forward-swizzle.md](pr-b2-selected-forward-swizzle.md), [patch](pr-b2-selected-forward-swizzle.diff); issue text kept in [b12x-02](b12x-02-bf16-swizzle.md) | draft ready; see the PR draft for validation |
 | B2b | Store order, software pipelining and split QK in the same kernel | later PR, after B2 | flashinfer-ai/flashinfer | none yet | bigger change; wants a design discussion |
 | B2c | Same swizzle construction in `gemm/bf16_gemv/_kernel.py:389–390` | measure, then fold into an issue or PR | flashinfer-ai/flashinfer | none yet | not measured |
@@ -58,7 +60,7 @@ None of B1, B2, B3, B5, B6, B7 or B8 has an existing issue or PR in FlashInfer (
 
 | Repository | What it holds | Status | Relevant here |
 |---|---|---|---|
-| **[flashinfer-ai/flashinfer](https://github.com/flashinfer-ai/flashinfer)** `flashinfer/experimental/b12x/` | The b12x kernels, now maintained inside FlashInfer. Mainline vLLM's docs say b12x "ships with FlashInfer (`flashinfer-python>=0.7.2`), so no separate install is needed". | active; `main` @ `d3f59f0`. FlashInfer 0.7.3 ships the same `_cute_prefill.py` and `_selected_forward.py` as that commit | **all b12x findings** (verified present) |
+| **[flashinfer-ai/flashinfer](https://github.com/flashinfer-ai/flashinfer)** `flashinfer/experimental/b12x/` | The b12x kernels, now maintained inside FlashInfer. Mainline vLLM's docs say b12x "ships with FlashInfer (`flashinfer-python>=0.7.2`), so no separate install is needed". | active; `main` @ `560d7e2` (2026-11-23), same b12x bug sites as `d3f59f0` and `v0.7.6rc1`. FlashInfer 0.7.3 ships the same `_cute_prefill.py` and `_selected_forward.py` | **all b12x findings** (verified present) |
 | [local-inference-lab/flashinfer](https://github.com/local-inference-lab/flashinfer) | A FlashInfer fork carrying extra b12x work, including the PLE/Engram host row cache (#44). Since 2026-10-07 it is where eugr's `--exp-b12x` lane gets b12x: `build-and-copy.sh` pins `9873d7a` (2026-10-14), 89 commits ahead of and 2,548 behind upstream `main` | active (pushed 2026-11-19) | B4. B1 (`_TILE_N = 16`), B2 (both `allocate_tensor` swizzle sites) and the RoCE GID bug are all present at `9873d7a`, and B1 is still on the fork's `main` |
 | [local-inference-lab/b12x](https://github.com/local-inference-lab/b12x) (`lukealonso/b12x` redirects here) | The original standalone b12x (1.5.0). Our older fleet images (`glm53-b12x:ab86b70`, the Flash Next image) still install it. eugr's images no longer do: eugr `a05111a` (2026-10-07) replaced the standalone package with the LIL FlashInfer fork | **archived** (read-only) since 2026-10-06; `master` @ `2cc7f66` | all b12x findings present, but nothing can be filed here |
 | [local-inference-lab/vllm](https://github.com/local-inference-lab/vllm) `dev/karmic-kraken` | The vLLM fork that eugr's b12x recipes build | `8244d1c` (2026-10-15); last push 2026-10-27 | fork-side model and integration findings |
@@ -109,7 +111,7 @@ in formatting and imports, plus unrelated additions.
 
 | # | Finding | FlashInfer `main` | LIL b12x `master` | Evidence | Draft | Priority |
 |---|---|---|---|---|---|---|
-| B1 | **MTP feedback prefill GEMM**: `_TILE_N = 16` and an M-major grid re-read A once per N tile (13.4 GB per chunk) | present (`sequence/mtp_feedback/_cute_prefill.py:29`, `:280`) | present | 57.7 to 2.6 ms (22×), bit-identical; −3.7% prefill | [PR draft](pr-b1-mtp-prefill-tile.md) | **high** |
+| B1 | **MTP feedback prefill GEMM**: `_TILE_N = 16` and an M-major grid re-read A once per N tile (13.4 GB per chunk) | present (`sequence/mtp_feedback/_cute_prefill.py:29`, `:280`) | present | 57.7 to 2.6 ms (22×), bit-identical; −3.7% prefill. Separately, all 40 stage releases are unfenced in the SASS (fence costs +0.5 to +1.5% at 64 to 4,096 tokens) | [PR draft](pr-b1-mtp-prefill-tile.md) | **high** |
 | B2 | **BF16 swizzle on element offsets**: `allocate_tensor(BFloat16, composed S<3,4,3> layout)` gives 2-way bank conflicts | present, both sites: `attention/paged/_selected_forward.py` (`_shared_layouts`), `gemm/bf16_gemv/_kernel.py:389–390` | present (same two sites) | attention (raw bank-conflict counters): loads 46.8% to 0.0%, stores 51.6% to ~5%, same on sm_120; bf16_gemv unmeasured | [PR draft](pr-b2-selected-forward-swizzle.md) | **high** |
 | B3 | **Dense GEMM persistent scheduler always walks along M** (A re-streamed when A is larger than W and than L2); quantized-mode `BlockscaledQuery` has no tile choice | present (`_lib/dense_gemm.py:5054`; `_raster_along_m` appears only in a TVM-FFI compatibility shim) | present | out_proj −23 to −30%, qkvz −4 to −10% | [b12x-03](b12x-03-dense-gemm-raster.md) | medium |
 | B4 | **PLE `DiskTable` reads synchronously in the batch**; `queue_depth` default 64 | present (`sequence/ple_embedding/_disk.py:19`, `sequence/_shared/disk_table.py:331`); the Engram disk table already has no-op `prefetch` / `abort_prefetch` hooks | present | QD 256: −4.1% TTFT; next-chunk prefetch: −6.2% | [b12x-04](b12x-04-ple-disk-prefetch.md) | medium |
@@ -118,6 +120,15 @@ in formatting and imports, plus unrelated additions.
 | B7 | `B12X_DYNAMIC_DETERMINISTIC_OUTPUT=1` cannot prepare the M = 1 plan | FlashInfer has recent deterministic-output fixes (`ecc4b8a9`, 2026-11-05), so it **may be fixed**; check before filing | not re-run | 1.5.0 | b12x-05 | low |
 | B8 | Preparation-cache identity keyed by the model snapshot path, so a new Hugging Face revision triggers a cold autotune | not checked in FlashInfer's tree | present | REPORT §13.20 | b12x-05 | low |
 | B9 | In-GEMM MXFP8 quantization only for M ≤ 8 | present | present | context for B3 | in b12x-03 | low |
+
+**Related open FlashInfer PRs (checked 2026-11-23).** Three open PRs by one author add a generic-to-async proxy fence
+before stage releases that follow `ldmatrix` reads: #9759 (GEMMs, including b12x `_lib/dense_gemm.py`), #9760 (MoE,
+including b12x `moe/_shared/kernels/dynamic.py`) and #9761 (attention, GDN, MSA, DSA; no b12x files). None touches
+`sequence/mtp_feedback/_cute_prefill.py`, so the B1 PR carries the same fix for that kernel (SASS check and cost in
+[`data/pr-validation-20261123-fence/`](../data/pr-validation-20261123-fence/)). For B3, #9759 edits the dense GEMM
+mainloop (around lines 2692 and 2905) while our raster patch edits the scheduler, so the two don't overlap textually.
+Our local MoE stage-override patch (`patches/b12x/dynamic.stage-override.diff`) is timing-only and not an upstream draft,
+but anything built on it should be rebased onto #9760 if that merges.
 
 ## vLLM fork (`local-inference-lab/vllm`)
 
